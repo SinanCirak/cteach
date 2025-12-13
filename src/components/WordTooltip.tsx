@@ -1,125 +1,141 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { translateWord } from '../utils/api'
 import { useLanguage } from '../contexts/LanguageContext'
+import { useTooltip } from '../contexts/TooltipContext'
 
 interface WordTooltipProps {
   word: string
   children: React.ReactNode
 }
 
+// Global counter for unique IDs
+let globalIdCounter = 0
+
 export default function WordTooltip({ word, children }: WordTooltipProps) {
   const { selectedLanguage } = useLanguage()
-  const [showTooltip, setShowTooltip] = useState(false)
+  const { activeTooltip, setActiveTooltip } = useTooltip()
   const [translation, setTranslation] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [position, setPosition] = useState({ top: 0, left: 0 })
   const wordRef = useRef<HTMLSpanElement>(null)
   const tooltipRef = useRef<HTMLDivElement>(null)
+  
+  // Generate truly unique ID for this component instance
+  const uniqueId = useMemo(() => {
+    return `tooltip_${++globalIdCounter}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  }, [])
+  
+  const normalizedWord = word.toLowerCase().trim().replace(/[.,!?;:()"]/g, '')
+  const showTooltip = activeTooltip === uniqueId
 
+  // Close tooltip when another one opens
   useEffect(() => {
-    if (showTooltip && wordRef.current) {
-      const rect = wordRef.current.getBoundingClientRect()
-      const tooltipHeight = tooltipRef.current?.offsetHeight || 80
-      const tooltipWidth = tooltipRef.current?.offsetWidth || 200
-      
-      let top = rect.bottom + window.scrollY + 8
-      let left = rect.left + rect.width / 2 - tooltipWidth / 2 + window.scrollX
-
-      // Adjust if tooltip goes off screen horizontally
-      if (left < 10) left = 10
-      if (left + tooltipWidth > window.innerWidth - 10) {
-        left = window.innerWidth - tooltipWidth - 10
-      }
-
-      // If tooltip would go below viewport, show above
-      const viewportBottom = window.scrollY + window.innerHeight
-      if (top + tooltipHeight > viewportBottom - 10) {
-        top = rect.top + window.scrollY - tooltipHeight - 8
-      }
-
-      setPosition({ top, left })
+    if (activeTooltip && activeTooltip !== uniqueId) {
+      setTranslation(null)
+      setError(null)
     }
-  }, [showTooltip, translation])
+  }, [activeTooltip, uniqueId])
 
   const handleClick = async (e: React.MouseEvent) => {
-    e.preventDefault()
+    e.stopPropagation()
     
-    if (!showTooltip) {
-      setShowTooltip(true)
-      setLoading(true)
-      setError(null)
+    console.log('WordTooltip clicked:', word, 'activeTooltip:', activeTooltip)
+    
+    // Toggle tooltip
+    if (showTooltip) {
+      setActiveTooltip(null)
+      return
+    }
+    
+    // Close any other open tooltip and open this one (using uniqueId for uniqueness)
+    setActiveTooltip(uniqueId)
+    setLoading(true)
+    setError(null)
+    setTranslation(null)
+    
+    try {
+      console.log('Normalized word:', normalizedWord, 'Target language:', selectedLanguage.targetCode)
       
-      try {
-        const normalizedWord = word.toLowerCase().trim().replace(/[.,!?;:()"]/g, '')
-        if (normalizedWord) {
-          // Only translate if target language is not English (source language)
-          if (selectedLanguage.targetCode !== 'en') {
-            const result = await translateWord(normalizedWord, selectedLanguage.targetCode)
-            setTranslation(result.translation)
-          } else {
-            // If English is selected, show the word itself
-            setTranslation(normalizedWord)
-          }
+      if (normalizedWord) {
+        // Only translate if target language is not English (source language)
+        if (selectedLanguage.targetCode !== 'en') {
+          console.log('Calling translateWord API...')
+          const result = await translateWord(normalizedWord, selectedLanguage.targetCode)
+          console.log('Translation result:', result)
+          setTranslation(result.translation)
         } else {
-          setError('Invalid word')
+          // If English is selected, show the word itself
+          setTranslation(normalizedWord)
         }
-      } catch (err) {
-        console.error('Translation error:', err)
-        setError('Translation failed')
-        setTranslation(null)
-      } finally {
-        setLoading(false)
+      } else {
+        setError('Invalid word')
       }
-    } else {
-      setShowTooltip(false)
+    } catch (err) {
+      console.error('Translation error:', err)
+      setError('Translation failed')
+      setTranslation(null)
+    } finally {
+      setLoading(false)
     }
   }
 
   useEffect(() => {
+    if (!showTooltip) return
+
     const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node
+      
+      // Don't close if clicking on the word or tooltip
       if (
-        tooltipRef.current &&
-        !tooltipRef.current.contains(event.target as Node) &&
-        wordRef.current &&
-        !wordRef.current.contains(event.target as Node)
+        (wordRef.current && wordRef.current.contains(target)) ||
+        (tooltipRef.current && tooltipRef.current.contains(target))
       ) {
-        setShowTooltip(false)
+        return
       }
+      
+      // Close tooltip if clicking outside
+      setActiveTooltip(null)
     }
 
-    if (showTooltip) {
-      document.addEventListener('mousedown', handleClickOutside)
-      return () => {
-        document.removeEventListener('mousedown', handleClickOutside)
-      }
+    // Use a small delay to prevent immediate closing
+    const timeoutId = setTimeout(() => {
+      document.addEventListener('click', handleClickOutside)
+    }, 100)
+
+    return () => {
+      clearTimeout(timeoutId)
+      document.removeEventListener('click', handleClickOutside)
     }
   }, [showTooltip])
 
   return (
-    <>
-      <span
-        ref={wordRef}
-        onClick={handleClick}
-        className="cursor-pointer hover:text-primary-600 hover:underline transition-colors relative inline-block"
-        style={{ textDecoration: showTooltip ? 'underline' : 'none' }}
-      >
-        {children}
-      </span>
+    <span
+      ref={wordRef}
+      onClick={handleClick}
+      onMouseDown={(e) => e.stopPropagation()}
+      className="cursor-pointer hover:text-primary-600 hover:underline transition-colors relative inline-block"
+      style={{ textDecoration: showTooltip ? 'underline' : 'none' }}
+    >
+      {children}
       {showTooltip && (
         <div
           ref={tooltipRef}
-          className="fixed z-50 bg-white rounded-lg shadow-xl border-2 border-primary-200 p-3 min-w-[150px] max-w-[250px] animate-in fade-in slide-in-from-top-1 duration-200"
+          className="absolute z-[9999] bg-white rounded-lg shadow-xl border-2 border-primary-200 p-3 min-w-[150px] max-w-[250px]"
           style={{
-            top: `${position.top}px`,
-            left: `${position.left}px`,
+            top: '100%',
+            left: '100%',
+            marginTop: '5px',
+            marginLeft: '5px',
+            animation: 'fadeIn 0.2s ease-in-out',
           }}
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
         >
           <div className="flex items-start justify-between mb-2">
             <div className="font-bold text-primary-600 text-sm">{word}</div>
             <button
-              onClick={() => setShowTooltip(false)}
-              className="text-gray-400 hover:text-gray-600 ml-2"
+              onClick={() => setActiveTooltip(null)}
+              className="text-gray-400 hover:text-gray-600 ml-2 flex-shrink-0"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -140,12 +156,14 @@ export default function WordTooltip({ word, children }: WordTooltipProps) {
               <div className="text-red-600 text-xs">{error}</div>
             )}
             {!loading && !error && translation && (
-              <div>{translation}</div>
+              <div className="break-words">{translation}</div>
+            )}
+            {!loading && !error && !translation && (
+              <div className="text-gray-500 text-xs">No translation available</div>
             )}
           </div>
-          <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 w-4 h-4 bg-white border-l-2 border-t-2 border-primary-200 rotate-45"></div>
         </div>
       )}
-    </>
+    </span>
   )
 }

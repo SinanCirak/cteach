@@ -6,6 +6,10 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
+    archive = {
+      source  = "hashicorp/archive"
+      version = "~> 2.4"
+    }
   }
 }
 
@@ -99,9 +103,23 @@ resource "aws_cloudfront_distribution" "tilgo_distribution" {
     compress               = true
   }
 
-  # Cache behavior for API calls
+  # API Gateway origin for API calls
+  origin {
+    domain_name = replace(aws_api_gateway_stage.tilgo_api.invoke_url, "/^https?://([^/]+).*$/", "$1")
+    origin_id   = "api-gateway"
+    origin_path = "/prod"
+
+    custom_origin_config {
+      http_port              = 80
+      https_port             = 443
+      origin_protocol_policy = "https-only"
+      origin_ssl_protocols   = ["TLSv1.2"]
+    }
+  }
+
+  # Cache behavior for API calls - rewrite /api/prod/* to /prod/*
   ordered_cache_behavior {
-    path_pattern     = "/api/*"
+    path_pattern     = "/api/prod/*"
     allowed_methods  = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
     cached_methods   = ["GET", "HEAD"]
     target_origin_id = "api-gateway"
@@ -158,18 +176,13 @@ resource "aws_s3_bucket_policy" "tilgo_website_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "AllowCloudFrontServicePrincipal"
+        Sid    = "AllowCloudFrontOAI"
         Effect = "Allow"
         Principal = {
-          Service = "cloudfront.amazonaws.com"
+          AWS = aws_cloudfront_origin_access_identity.tilgo_oai.iam_arn
         }
         Action   = "s3:GetObject"
         Resource = "${aws_s3_bucket.tilgo_website.arn}/*"
-        Condition = {
-          StringEquals = {
-            "AWS:SourceArn" = aws_cloudfront_distribution.tilgo_distribution.arn
-          }
-        }
       }
     ]
   })
@@ -270,6 +283,7 @@ resource "aws_dynamodb_table" "grammar_quizzes" {
   global_secondary_index {
     name     = "lessonId-index"
     hash_key = "lessonId"
+    projection_type = "ALL"
   }
 
   tags = {
@@ -296,6 +310,7 @@ resource "aws_dynamodb_table" "vocabulary_words" {
   global_secondary_index {
     name     = "word-index"
     hash_key = "word"
+    projection_type = "ALL"
   }
 
   tags = {
@@ -386,6 +401,223 @@ resource "aws_iam_role_policy" "lambda_dynamodb_policy" {
   })
 }
 
+# Lambda deployment packages
+data "archive_file" "translate_word_zip" {
+  type        = "zip"
+  source_dir  = "${path.module}/../lambda/translate-word"
+  output_path = "${path.module}/lambda-packages/translate-word.zip"
+}
+
+data "archive_file" "batch_translate_zip" {
+  type        = "zip"
+  source_dir  = "${path.module}/../lambda/batch-translate"
+  output_path = "${path.module}/lambda-packages/batch-translate.zip"
+}
+
+data "archive_file" "get_grammar_lessons_zip" {
+  type        = "zip"
+  source_dir  = "${path.module}/../lambda/get-grammar-lessons"
+  output_path = "${path.module}/lambda-packages/get-grammar-lessons.zip"
+  excludes    = ["node_modules"]
+}
+
+data "archive_file" "get_grammar_lesson_zip" {
+  type        = "zip"
+  source_dir  = "${path.module}/../lambda/get-grammar-lesson"
+  output_path = "${path.module}/lambda-packages/get-grammar-lesson.zip"
+  excludes    = ["node_modules"]
+}
+
+data "archive_file" "get_grammar_quiz_zip" {
+  type        = "zip"
+  source_dir  = "${path.module}/../lambda/get-grammar-quiz"
+  output_path = "${path.module}/lambda-packages/get-grammar-quiz.zip"
+  excludes    = ["node_modules"]
+}
+
+data "archive_file" "get_vocabulary_words_zip" {
+  type        = "zip"
+  source_dir  = "${path.module}/../lambda/get-vocabulary-words"
+  output_path = "${path.module}/lambda-packages/get-vocabulary-words.zip"
+  excludes    = ["node_modules"]
+}
+
+# Lambda Functions
+resource "aws_lambda_function" "translate_word" {
+  filename         = data.archive_file.translate_word_zip.output_path
+  function_name    = "tilgo-translate-word"
+  role            = aws_iam_role.lambda_role.arn
+  handler         = "index.handler"
+  source_code_hash = data.archive_file.translate_word_zip.output_base64sha256
+  runtime         = "nodejs18.x"
+  timeout         = 30
+
+  environment {
+    variables = {
+      TRANSLATIONS_TABLE = aws_dynamodb_table.word_translations.name
+    }
+  }
+
+  tags = {
+    Name        = "Translate Word"
+    Environment = var.environment
+  }
+}
+
+resource "aws_lambda_function" "batch_translate" {
+  filename         = data.archive_file.batch_translate_zip.output_path
+  function_name    = "tilgo-batch-translate"
+  role            = aws_iam_role.lambda_role.arn
+  handler         = "index.handler"
+  source_code_hash = data.archive_file.batch_translate_zip.output_base64sha256
+  runtime         = "nodejs18.x"
+  timeout         = 60
+
+  environment {
+    variables = {
+      TRANSLATIONS_TABLE = aws_dynamodb_table.word_translations.name
+    }
+  }
+
+  tags = {
+    Name        = "Batch Translate"
+    Environment = var.environment
+  }
+}
+
+# Lambda permissions for API Gateway
+resource "aws_lambda_permission" "translate_word_api" {
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.translate_word.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.tilgo_api.execution_arn}/*/*"
+}
+
+resource "aws_lambda_permission" "batch_translate_api" {
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.batch_translate.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.tilgo_api.execution_arn}/*/*"
+}
+
+resource "aws_lambda_function" "get_grammar_lessons" {
+  filename         = data.archive_file.get_grammar_lessons_zip.output_path
+  function_name    = "tilgo-get-grammar-lessons"
+  role            = aws_iam_role.lambda_role.arn
+  handler         = "index.handler"
+  source_code_hash = data.archive_file.get_grammar_lessons_zip.output_base64sha256
+  runtime         = "nodejs18.x"
+  timeout         = 30
+
+  environment {
+    variables = {
+      GRAMMAR_LESSONS_TABLE = aws_dynamodb_table.grammar_lessons.name
+    }
+  }
+
+  tags = {
+    Name        = "Get Grammar Lessons"
+    Environment = var.environment
+  }
+}
+
+resource "aws_lambda_function" "get_grammar_lesson" {
+  filename         = data.archive_file.get_grammar_lesson_zip.output_path
+  function_name    = "tilgo-get-grammar-lesson"
+  role            = aws_iam_role.lambda_role.arn
+  handler         = "index.handler"
+  source_code_hash = data.archive_file.get_grammar_lesson_zip.output_base64sha256
+  runtime         = "nodejs18.x"
+  timeout         = 30
+
+  environment {
+    variables = {
+      GRAMMAR_LESSONS_TABLE = aws_dynamodb_table.grammar_lessons.name
+    }
+  }
+
+  tags = {
+    Name        = "Get Grammar Lesson"
+    Environment = var.environment
+  }
+}
+
+resource "aws_lambda_function" "get_grammar_quiz" {
+  filename         = data.archive_file.get_grammar_quiz_zip.output_path
+  function_name    = "tilgo-get-grammar-quiz"
+  role            = aws_iam_role.lambda_role.arn
+  handler         = "index.handler"
+  source_code_hash = data.archive_file.get_grammar_quiz_zip.output_base64sha256
+  runtime         = "nodejs18.x"
+  timeout         = 30
+
+  environment {
+    variables = {
+      GRAMMAR_QUIZZES_TABLE = aws_dynamodb_table.grammar_quizzes.name
+    }
+  }
+
+  tags = {
+    Name        = "Get Grammar Quiz"
+    Environment = var.environment
+  }
+}
+
+resource "aws_lambda_function" "get_vocabulary_words" {
+  filename         = data.archive_file.get_vocabulary_words_zip.output_path
+  function_name    = "tilgo-get-vocabulary-words"
+  role            = aws_iam_role.lambda_role.arn
+  handler         = "index.handler"
+  source_code_hash = data.archive_file.get_vocabulary_words_zip.output_base64sha256
+  runtime         = "nodejs18.x"
+  timeout         = 30
+
+  environment {
+    variables = {
+      VOCABULARY_WORDS_TABLE = aws_dynamodb_table.vocabulary_words.name
+    }
+  }
+
+  tags = {
+    Name        = "Get Vocabulary Words"
+    Environment = var.environment
+  }
+}
+
+resource "aws_lambda_permission" "get_grammar_lessons_api" {
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.get_grammar_lessons.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.tilgo_api.execution_arn}/*/*"
+}
+
+resource "aws_lambda_permission" "get_grammar_lesson_api" {
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.get_grammar_lesson.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.tilgo_api.execution_arn}/*/*"
+}
+
+resource "aws_lambda_permission" "get_grammar_quiz_api" {
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.get_grammar_quiz.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.tilgo_api.execution_arn}/*/*"
+}
+
+resource "aws_lambda_permission" "get_vocabulary_words_api" {
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.get_vocabulary_words.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.tilgo_api.execution_arn}/*/*"
+}
+
 # API Gateway
 resource "aws_api_gateway_rest_api" "tilgo_api" {
   name        = "tilgo-api"
@@ -404,6 +636,19 @@ resource "aws_api_gateway_deployment" "tilgo_api" {
       aws_api_gateway_rest_api.tilgo_api.body,
       aws_api_gateway_resource.grammar.id,
       aws_api_gateway_resource.vocabulary.id,
+      aws_api_gateway_resource.translate.id,
+      aws_api_gateway_method.translate_word_get.id,
+      aws_api_gateway_method.translate_batch_post.id,
+      aws_api_gateway_method.grammar_lessons_get.id,
+      aws_api_gateway_method.grammar_lesson_get.id,
+      aws_api_gateway_method.grammar_quiz_get.id,
+      aws_api_gateway_method.vocabulary_words_get.id,
+      aws_lambda_function.translate_word.id,
+      aws_lambda_function.batch_translate.id,
+      aws_lambda_function.get_grammar_lessons.id,
+      aws_lambda_function.get_grammar_lesson.id,
+      aws_lambda_function.get_grammar_quiz.id,
+      aws_lambda_function.get_vocabulary_words.id,
     ]))
   }
 
@@ -518,6 +763,313 @@ resource "aws_api_gateway_integration_response" "grammar_lessons_options" {
   response_parameters = {
     "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
     "method.response.header.Access-Control-Allow-Methods" = "'GET,OPTIONS'"
+    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
+  }
+}
+
+# Grammar Lessons GET
+resource "aws_api_gateway_method" "grammar_lessons_get" {
+  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id   = aws_api_gateway_resource.grammar_lessons.id
+  http_method   = "GET"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "grammar_lessons_get" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.grammar_lessons.id
+  http_method = aws_api_gateway_method.grammar_lessons_get.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = aws_lambda_function.get_grammar_lessons.invoke_arn
+}
+
+# Grammar Lesson GET
+resource "aws_api_gateway_method" "grammar_lesson_get" {
+  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id   = aws_api_gateway_resource.grammar_lesson.id
+  http_method   = "GET"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "grammar_lesson_get" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.grammar_lesson.id
+  http_method = aws_api_gateway_method.grammar_lesson_get.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = aws_lambda_function.get_grammar_lesson.invoke_arn
+}
+
+resource "aws_api_gateway_method" "grammar_lesson_options" {
+  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id   = aws_api_gateway_resource.grammar_lesson.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "grammar_lesson_options" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.grammar_lesson.id
+  http_method = aws_api_gateway_method.grammar_lesson_options.http_method
+  type        = "MOCK"
+  request_templates = {
+    "application/json" = "{\"statusCode\": 200}"
+  }
+}
+
+resource "aws_api_gateway_method_response" "grammar_lesson_options" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.grammar_lesson.id
+  http_method = aws_api_gateway_method.grammar_lesson_options.http_method
+  status_code = "200"
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = true
+    "method.response.header.Access-Control-Allow-Methods" = true
+    "method.response.header.Access-Control-Allow-Origin"  = true
+  }
+}
+
+resource "aws_api_gateway_integration_response" "grammar_lesson_options" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.grammar_lesson.id
+  http_method = aws_api_gateway_method.grammar_lesson_options.http_method
+  status_code = aws_api_gateway_method_response.grammar_lesson_options.status_code
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+    "method.response.header.Access-Control-Allow-Methods" = "'GET,OPTIONS'"
+    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
+  }
+}
+
+# Grammar Quiz GET
+resource "aws_api_gateway_method" "grammar_quiz_get" {
+  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id   = aws_api_gateway_resource.grammar_quiz.id
+  http_method   = "GET"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "grammar_quiz_get" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.grammar_quiz.id
+  http_method = aws_api_gateway_method.grammar_quiz_get.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = aws_lambda_function.get_grammar_quiz.invoke_arn
+}
+
+resource "aws_api_gateway_method" "grammar_quiz_options" {
+  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id   = aws_api_gateway_resource.grammar_quiz.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "grammar_quiz_options" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.grammar_quiz.id
+  http_method = aws_api_gateway_method.grammar_quiz_options.http_method
+  type        = "MOCK"
+  request_templates = {
+    "application/json" = "{\"statusCode\": 200}"
+  }
+}
+
+resource "aws_api_gateway_method_response" "grammar_quiz_options" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.grammar_quiz.id
+  http_method = aws_api_gateway_method.grammar_quiz_options.http_method
+  status_code = "200"
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = true
+    "method.response.header.Access-Control-Allow-Methods" = true
+    "method.response.header.Access-Control-Allow-Origin"  = true
+  }
+}
+
+resource "aws_api_gateway_integration_response" "grammar_quiz_options" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.grammar_quiz.id
+  http_method = aws_api_gateway_method.grammar_quiz_options.http_method
+  status_code = aws_api_gateway_method_response.grammar_quiz_options.status_code
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+    "method.response.header.Access-Control-Allow-Methods" = "'GET,OPTIONS'"
+    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
+  }
+}
+
+# Vocabulary Words GET
+resource "aws_api_gateway_method" "vocabulary_words_get" {
+  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id   = aws_api_gateway_resource.vocabulary_words.id
+  http_method   = "GET"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "vocabulary_words_get" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.vocabulary_words.id
+  http_method = aws_api_gateway_method.vocabulary_words_get.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = aws_lambda_function.get_vocabulary_words.invoke_arn
+}
+
+resource "aws_api_gateway_method" "vocabulary_words_options" {
+  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id   = aws_api_gateway_resource.vocabulary_words.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "vocabulary_words_options" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.vocabulary_words.id
+  http_method = aws_api_gateway_method.vocabulary_words_options.http_method
+  type        = "MOCK"
+  request_templates = {
+    "application/json" = "{\"statusCode\": 200}"
+  }
+}
+
+resource "aws_api_gateway_method_response" "vocabulary_words_options" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.vocabulary_words.id
+  http_method = aws_api_gateway_method.vocabulary_words_options.http_method
+  status_code = "200"
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = true
+    "method.response.header.Access-Control-Allow-Methods" = true
+    "method.response.header.Access-Control-Allow-Origin"  = true
+  }
+}
+
+resource "aws_api_gateway_integration_response" "vocabulary_words_options" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.vocabulary_words.id
+  http_method = aws_api_gateway_method.vocabulary_words_options.http_method
+  status_code = aws_api_gateway_method_response.vocabulary_words_options.status_code
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+    "method.response.header.Access-Control-Allow-Methods" = "'GET,OPTIONS'"
+    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
+  }
+}
+
+# Translate Word Endpoint
+resource "aws_api_gateway_method" "translate_word_get" {
+  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id   = aws_api_gateway_resource.translate_word.id
+  http_method   = "GET"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "translate_word_get" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.translate_word.id
+  http_method = aws_api_gateway_method.translate_word_get.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = aws_lambda_function.translate_word.invoke_arn
+}
+
+resource "aws_api_gateway_method" "translate_word_options" {
+  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id   = aws_api_gateway_resource.translate_word.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "translate_word_options" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.translate_word.id
+  http_method = aws_api_gateway_method.translate_word_options.http_method
+  type        = "MOCK"
+  request_templates = {
+    "application/json" = "{\"statusCode\": 200}"
+  }
+}
+
+resource "aws_api_gateway_method_response" "translate_word_options" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.translate_word.id
+  http_method = aws_api_gateway_method.translate_word_options.http_method
+  status_code = "200"
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = true
+    "method.response.header.Access-Control-Allow-Methods" = true
+    "method.response.header.Access-Control-Allow-Origin"  = true
+  }
+}
+
+resource "aws_api_gateway_integration_response" "translate_word_options" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.translate_word.id
+  http_method = aws_api_gateway_method.translate_word_options.http_method
+  status_code = aws_api_gateway_method_response.translate_word_options.status_code
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+    "method.response.header.Access-Control-Allow-Methods" = "'GET,OPTIONS'"
+    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
+  }
+}
+
+# Batch Translate Endpoint
+resource "aws_api_gateway_method" "translate_batch_post" {
+  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id   = aws_api_gateway_resource.translate_batch.id
+  http_method   = "POST"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "translate_batch_post" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.translate_batch.id
+  http_method = aws_api_gateway_method.translate_batch_post.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = aws_lambda_function.batch_translate.invoke_arn
+}
+
+resource "aws_api_gateway_method" "translate_batch_options" {
+  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id   = aws_api_gateway_resource.translate_batch.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "translate_batch_options" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.translate_batch.id
+  http_method = aws_api_gateway_method.translate_batch_options.http_method
+  type        = "MOCK"
+  request_templates = {
+    "application/json" = "{\"statusCode\": 200}"
+  }
+}
+
+resource "aws_api_gateway_method_response" "translate_batch_options" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.translate_batch.id
+  http_method = aws_api_gateway_method.translate_batch_options.http_method
+  status_code = "200"
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = true
+    "method.response.header.Access-Control-Allow-Methods" = true
+    "method.response.header.Access-Control-Allow-Origin"  = true
+  }
+}
+
+resource "aws_api_gateway_integration_response" "translate_batch_options" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.translate_batch.id
+  http_method = aws_api_gateway_method.translate_batch_options.http_method
+  status_code = aws_api_gateway_method_response.translate_batch_options.status_code
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+    "method.response.header.Access-Control-Allow-Methods" = "'POST,OPTIONS'"
     "method.response.header.Access-Control-Allow-Origin"  = "'*'"
   }
 }

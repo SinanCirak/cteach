@@ -1,7 +1,7 @@
 {
-  "name": "batch-translate",
+  "name": "get-grammar-quiz",
   "version": "1.0.0",
-  "description": "Lambda function to batch translate words from text",
+  "description": "Lambda function to get a grammar quiz",
   "main": "index.js",
   "dependencies": {
     "aws-sdk": "^2.1691.0"

@@ -46,3 +46,4 @@ export function useBatchTranslate(texts: string[]) {
   return { isLoading, error }
 }
 
+

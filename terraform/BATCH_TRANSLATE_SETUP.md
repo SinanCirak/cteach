@@ -22,3 +22,4 @@ After running `terraform apply`, you need to manually configure the batch transl
 
 See the Lambda deployment section in main.tf (to be added).
 
+

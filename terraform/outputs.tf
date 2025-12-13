@@ -43,3 +43,15 @@ output "route53_record" {
   value       = aws_route53_record.tilgo.fqdn
 }
 
+output "lambda_functions" {
+  description = "Lambda function names"
+  value = {
+    translate_word      = aws_lambda_function.translate_word.function_name
+    batch_translate     = aws_lambda_function.batch_translate.function_name
+    get_grammar_lessons = aws_lambda_function.get_grammar_lessons.function_name
+    get_grammar_lesson  = aws_lambda_function.get_grammar_lesson.function_name
+    get_grammar_quiz    = aws_lambda_function.get_grammar_quiz.function_name
+    get_vocabulary_words = aws_lambda_function.get_vocabulary_words.function_name
+  }
+}
+

@@ -28,8 +28,9 @@ export default function ClickableText({ text }: ClickableTextProps) {
         
         // If it's a valid word, make it clickable (will use AWS Translate)
         if (isWord(part) && cleanWord.length > 0) {
+          // Use index as key, WordTooltip will generate its own unique ID
           return (
-            <WordTooltip key={index} word={cleanWord}>
+            <WordTooltip key={`${cleanWord}_${index}_${Date.now()}`} word={cleanWord}>
               {part}
             </WordTooltip>
           )

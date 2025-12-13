@@ -1,5 +1,6 @@
 // API configuration
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://api.tilgo.cirak.ca/prod'
+// Use direct API Gateway URL for now (CORS is configured)
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://fi3hva7yre.execute-api.ca-central-1.amazonaws.com/prod'
 
 export interface TranslationResponse {
   word: string
@@ -35,8 +36,17 @@ export async function translateWord(word: string, targetLanguage: string = 'tr')
       }
     )
 
+    // Check if response is JSON
+    const contentType = response.headers.get('content-type')
+    if (!contentType || !contentType.includes('application/json')) {
+      const text = await response.text()
+      console.error('Non-JSON response:', text.substring(0, 200))
+      throw new Error(`Translation failed: Server returned non-JSON response (${response.status})`)
+    }
+
     if (!response.ok) {
-      throw new Error(`Translation failed: ${response.statusText}`)
+      const errorData = await response.json().catch(() => ({ error: response.statusText }))
+      throw new Error(errorData.error || `Translation failed: ${response.statusText}`)
     }
 
     const data: TranslationResponse = await response.json()

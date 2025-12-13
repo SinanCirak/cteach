@@ -21,3 +21,4 @@ export function extractWordsFromTexts(texts: string[]): string[] {
   return [...new Set(allWords)]
 }
 
+

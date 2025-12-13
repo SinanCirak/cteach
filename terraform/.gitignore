@@ -29,3 +29,7 @@ override.tf.json
 .terraformrc
 terraform.rc
 
+# Lambda packages
+lambda-packages/
+*.zip
+
