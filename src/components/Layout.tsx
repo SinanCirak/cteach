@@ -1,4 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
+import LanguageSelector from './LanguageSelector'
 
 interface LayoutProps {
   children: React.ReactNode
@@ -13,14 +14,16 @@ export default function Layout({ children }: LayoutProps) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center">
-              <Link to="/" className="flex items-center space-x-2">
-                <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-700 rounded-lg flex items-center justify-center">
-                  <span className="text-white font-bold text-xl">T</span>
-                </div>
-                <span className="text-2xl font-bold text-gray-800">Tilgo</span>
+              <Link to="/" className="flex items-center space-x-3 hover:opacity-90 transition-opacity group">
+                <img 
+                  src="/logo-icon.svg" 
+                  alt="Tilgo Logo" 
+                  className="w-12 h-12 group-hover:scale-105 transition-transform"
+                />
+                <span className="text-2xl font-bold text-gray-800">tilgo</span>
               </Link>
             </div>
-            <div className="flex items-center space-x-8">
+            <div className="flex items-center space-x-6">
               <Link
                 to="/grammar"
                 className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
@@ -41,6 +44,7 @@ export default function Layout({ children }: LayoutProps) {
               >
                 Vocabulary
               </Link>
+              <LanguageSelector />
             </div>
           </div>
         </div>

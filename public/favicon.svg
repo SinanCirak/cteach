@@ -1,0 +1,32 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="faviconBg" cx="50%" cy="50%" r="70%">
+      <stop offset="0%" style="stop-color:#e0e7ff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#a5b4fc;stop-opacity:1" />
+    </radialGradient>
+    
+    <filter id="faviconGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="1.5" result="blur"/>
+      <feOffset in="blur" dx="0" dy="0" result="offsetBlur"/>
+      <feFlood flood-color="#60a5fa" flood-opacity="0.7"/>
+      <feComposite in2="offsetBlur" operator="in"/>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <rect width="32" height="32" rx="4" fill="url(#faviconBg)"/>
+  <text 
+    x="16" 
+    y="22" 
+    font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif" 
+    font-size="20" 
+    font-weight="700" 
+    fill="#2563eb" 
+    text-anchor="middle"
+    filter="url(#faviconGlow)">
+    t
+  </text>
+</svg>

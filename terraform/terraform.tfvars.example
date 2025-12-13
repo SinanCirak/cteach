@@ -1,0 +1,6 @@
+aws_region  = "ca-central-1"
+environment = "prod"
+bucket_name = "tilgo-website-prod"
+domain_name = "tilgo.cirak.ca"
+root_domain = "cirak.ca"
+

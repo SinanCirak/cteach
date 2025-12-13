@@ -1,5 +1,4 @@
 import WordTooltip from './WordTooltip'
-import { getTranslation } from '../utils/translations'
 
 interface ClickableTextProps {
   text: string
@@ -9,6 +8,13 @@ export default function ClickableText({ text }: ClickableTextProps) {
   // Split text into words, preserving punctuation and spaces
   const parts = text.split(/(\s+|[.,!?;:()"])/)
   
+  // Simple word detection - make all words clickable
+  const isWord = (part: string): boolean => {
+    const cleaned = part.toLowerCase().replace(/[.,!?;:()"]/g, '').trim()
+    // Only make clickable if it's a real word (letters only, at least 2 chars)
+    return /^[a-z]{2,}$/.test(cleaned)
+  }
+  
   return (
     <>
       {parts.map((part, index) => {
@@ -17,14 +23,13 @@ export default function ClickableText({ text }: ClickableTextProps) {
           return <span key={index}>{part}</span>
         }
         
-        // Clean word for translation lookup
+        // Clean word for checking
         const cleanWord = part.toLowerCase().replace(/[.,!?;:()"]/g, '').trim()
-        const translation = cleanWord ? getTranslation(cleanWord) : null
         
-        // If we have a translation, wrap in WordTooltip
-        if (translation && cleanWord.length > 0) {
+        // If it's a valid word, make it clickable (will use AWS Translate)
+        if (isWord(part) && cleanWord.length > 0) {
           return (
-            <WordTooltip key={index} word={cleanWord} translation={translation}>
+            <WordTooltip key={index} word={cleanWord}>
               {part}
             </WordTooltip>
           )

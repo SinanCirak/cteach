@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import ClickableText from '../components/ClickableText'
+import { useBatchTranslate } from '../hooks/useBatchTranslate'
 
 // Mock data - will be replaced with DynamoDB data
 const words = [
@@ -34,6 +35,14 @@ export default function VocabularyList() {
     (currentPage - 1) * wordsPerPage,
     currentPage * wordsPerPage
   )
+
+  // Extract all text content for batch translation
+  const allTexts = useMemo(() => {
+    return words.flatMap(word => [word.definition, word.example])
+  }, [])
+
+  // Batch translate all words
+  useBatchTranslate(allTexts)
 
   return (
     <div className="space-y-6">

@@ -1,0 +1,10 @@
+{
+  "name": "translate-word",
+  "version": "1.0.0",
+  "description": "Lambda function to translate words using AWS Translate",
+  "main": "index.js",
+  "dependencies": {
+    "aws-sdk": "^2.1691.0"
+  }
+}
+

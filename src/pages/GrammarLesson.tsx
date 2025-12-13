@@ -1,5 +1,7 @@
 import { useParams, Link } from 'react-router-dom'
+import { useMemo } from 'react'
 import ClickableText from '../components/ClickableText'
+import { useBatchTranslate } from '../hooks/useBatchTranslate'
 
 // Mock data - will be replaced with DynamoDB data
 const lessons: Record<string, {
@@ -124,6 +126,32 @@ const lessons: Record<string, {
 export default function GrammarLesson() {
   const { lessonId } = useParams<{ lessonId: string }>()
   const lesson = lessonId ? lessons[lessonId] : null
+
+  // Extract all text content for batch translation
+  const allTexts = useMemo(() => {
+    if (!lesson) return []
+    
+    const texts: string[] = []
+    // Add content paragraphs
+    texts.push(...lesson.content)
+    // Add formula if exists
+    if (lesson.formula) texts.push(lesson.formula)
+    // Add uses examples
+    lesson.uses.forEach(use => {
+      texts.push(use.description, use.example)
+    })
+    // Add example sentences
+    lesson.examples.forEach(example => {
+      texts.push(example.sentence, example.explanation)
+    })
+    // Add tips
+    if (lesson.tips) texts.push(...lesson.tips)
+    
+    return texts
+  }, [lesson])
+
+  // Batch translate all words in the lesson
+  useBatchTranslate(allTexts)
 
   if (!lesson) {
     return (
