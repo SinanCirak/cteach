@@ -1,8 +1,10 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
+import { getGrammarQuiz } from '../utils/api'
 
-// Mock quiz data - will be replaced with DynamoDB data
-const quizzes: Record<string, {
+interface Quiz {
+  quizId: string
+  lessonId: string
   title: string
   questions: {
     id: string
@@ -11,81 +13,55 @@ const quizzes: Record<string, {
     correctAnswer: number
     explanation: string
   }[]
-}> = {
-  '1': {
-    title: 'Present Simple Tense Quiz',
-    questions: [
-      {
-        id: '1',
-        question: 'Which sentence is correct?',
-        options: [
-          'I go to school every day.',
-          'I am going to school every day.',
-          'I goes to school every day.',
-          'I going to school every day.',
-        ],
-        correctAnswer: 0,
-        explanation: 'The present simple is used for habits and routines. "I go" is the correct form.',
-      },
-      {
-        id: '2',
-        question: 'Choose the correct form: She _____ coffee in the morning.',
-        options: ['drink', 'drinks', 'drinking', 'drank'],
-        correctAnswer: 1,
-        explanation: 'Third person singular (she) requires the -s form: "drinks".',
-      },
-      {
-        id: '3',
-        question: 'Which sentence uses present simple correctly?',
-        options: [
-          'The sun is rising in the east.',
-          'The sun rises in the east.',
-          'The sun rose in the east.',
-          'The sun will rise in the east.',
-        ],
-        correctAnswer: 1,
-        explanation: 'General truths use present simple: "The sun rises in the east."',
-      },
-    ],
-  },
-  '2': {
-    title: 'Present Continuous Tense Quiz',
-    questions: [
-      {
-        id: '1',
-        question: 'What is the correct form? I _____ a book right now.',
-        options: ['read', 'am reading', 'reads', 'reading'],
-        correctAnswer: 1,
-        explanation: 'Actions happening now use present continuous: "am reading".',
-      },
-      {
-        id: '2',
-        question: 'Which sentence is correct?',
-        options: [
-          'They are build a house.',
-          'They are building a house.',
-          'They building a house.',
-          'They is building a house.',
-        ],
-        correctAnswer: 1,
-        explanation: 'Present continuous uses "are + verb + -ing": "are building".',
-      },
-    ],
-  },
 }
 
 export default function GrammarQuiz() {
   const { lessonId } = useParams<{ lessonId: string }>()
-  const quiz = lessonId ? quizzes[lessonId] : null
+  const [quiz, setQuiz] = useState<Quiz | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [currentQuestion, setCurrentQuestion] = useState(0)
   const [selectedAnswers, setSelectedAnswers] = useState<Record<number, number>>({})
   const [showResults, setShowResults] = useState(false)
   const [score, setScore] = useState(0)
 
-  if (!quiz) {
+  useEffect(() => {
+    const fetchQuiz = async () => {
+      if (!lessonId) return
+      
+      try {
+        setLoading(true)
+        // First, we need to find the quiz by lessonId
+        // For now, we'll use lessonId as quizId (you may need to adjust this based on your data structure)
+        // TODO: Add API endpoint to get quiz by lessonId
+        const data = await getGrammarQuiz(lessonId)
+        setQuiz(data)
+      } catch (err: any) {
+        console.error('Failed to fetch quiz:', err)
+        setError(err.message || 'Failed to load quiz')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchQuiz()
+  }, [lessonId])
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading quiz...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error || !quiz) {
     return (
       <div className="text-center py-12">
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">Quiz not found</h2>
+        <h2 className="text-2xl font-bold text-gray-900 mb-4">{error || 'Quiz not found'}</h2>
         <Link to="/grammar" className="text-primary-600 hover:underline">
           Back to Grammar Lessons
         </Link>

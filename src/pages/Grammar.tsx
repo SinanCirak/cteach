@@ -1,58 +1,110 @@
 import { Link } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { getGrammarLessons } from '../utils/api'
 
-// Mock data - will be replaced with DynamoDB data
-const grammarLessons = [
-  {
-    id: '1',
-    title: 'Present Simple Tense',
-    description: 'Learn how to use the present simple tense in English',
-    level: 'Beginner',
-    duration: '15 min',
-    completed: false,
-  },
-  {
-    id: '2',
-    title: 'Present Continuous Tense',
-    description: 'Master the present continuous tense and its usage',
-    level: 'Beginner',
-    duration: '20 min',
-    completed: false,
-  },
-  {
-    id: '3',
-    title: 'Past Simple Tense',
-    description: 'Understand how to form and use the past simple tense',
-    level: 'Beginner',
-    duration: '18 min',
-    completed: true,
-  },
-  {
-    id: '4',
-    title: 'Future Tenses',
-    description: 'Learn about will, going to, and present continuous for future',
-    level: 'Intermediate',
-    duration: '25 min',
-    completed: false,
-  },
-  {
-    id: '5',
-    title: 'Present Perfect Tense',
-    description: 'Master the present perfect tense and its various uses',
-    level: 'Intermediate',
-    duration: '22 min',
-    completed: false,
-  },
-  {
-    id: '6',
-    title: 'Conditionals',
-    description: 'Learn zero, first, second, and third conditionals',
-    level: 'Intermediate',
-    duration: '30 min',
-    completed: false,
-  },
-]
+interface GrammarLesson {
+  lessonId: string
+  title: string
+  subtitle?: string
+  level: string
+  order: number
+}
 
 export default function Grammar() {
+  const [lessons, setLessons] = useState<GrammarLesson[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const fetchLessons = async () => {
+      try {
+        setLoading(true)
+        const data = await getGrammarLessons()
+        if (data && data.lessons) {
+          // Remove duplicates based on lessonId
+          const uniqueLessons = data.lessons.reduce((acc: GrammarLesson[], lesson: GrammarLesson) => {
+            if (!acc.find(l => l.lessonId === lesson.lessonId)) {
+              acc.push(lesson)
+            }
+            return acc
+          }, [])
+          
+          // Sort by order
+          const sortedLessons = uniqueLessons.sort((a: GrammarLesson, b: GrammarLesson) => 
+            (a.order || 0) - (b.order || 0)
+          )
+          setLessons(sortedLessons)
+        }
+      } catch (err: any) {
+        console.error('Failed to fetch lessons:', err)
+        // If no lessons found, show empty state instead of error
+        if (err.message && err.message.includes('404')) {
+          setLessons([])
+          setError(null)
+        } else {
+          setError(err.message || 'Failed to load lessons')
+        }
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchLessons()
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading lessons...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error && lessons.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-red-600 mb-4">{error}</p>
+        <p className="text-gray-600 mb-4 text-sm">
+          API URL: {import.meta.env.VITE_API_URL || 'https://fi3hva7yre.execute-api.ca-central-1.amazonaws.com/prod'}
+        </p>
+        <button
+          onClick={() => window.location.reload()}
+          className="text-primary-600 hover:underline"
+        >
+          Try again
+        </button>
+      </div>
+    )
+  }
+
+  if (lessons.length === 0 && !loading) {
+    return (
+      <div className="text-center py-12">
+        <h2 className="text-2xl font-bold text-gray-900 mb-4">No lessons found</h2>
+        <p className="text-gray-600 mb-4">
+          Please upload grammar lessons from the admin panel.
+        </p>
+        <Link
+          to="/admin"
+          className="text-primary-600 hover:underline"
+        >
+          Go to Admin Panel
+        </Link>
+      </div>
+    )
+  }
+
+  const grammarLessons = lessons.map(lesson => ({
+    id: lesson.lessonId,
+    title: lesson.title,
+    description: lesson.subtitle || `Learn about ${lesson.title}`,
+    level: lesson.level === 'beginner' ? 'Beginner' : lesson.level === 'intermediate' ? 'Intermediate' : 'Advanced',
+    duration: '15 min',
+    completed: false,
+  }))
   return (
     <div className="space-y-8">
       <div>

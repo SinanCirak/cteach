@@ -61,18 +61,43 @@ export async function translateWord(word: string, targetLanguage: string = 'tr')
  * Get grammar lessons
  */
 export async function getGrammarLessons() {
-  const response = await fetch(`${API_BASE_URL}/grammar/lessons`)
-  if (!response.ok) throw new Error('Failed to fetch grammar lessons')
-  return response.json()
+  try {
+    const response = await fetch(`${API_BASE_URL}/grammar/lessons`)
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('API Error:', response.status, errorText)
+      throw new Error(`Failed to fetch grammar lessons: ${response.status} ${errorText}`)
+    }
+    const data = await response.json()
+    return data
+  } catch (error: any) {
+    console.error('Fetch error:', error)
+    // If it's a network error, return empty array instead of throwing
+    if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+      console.warn('Network error, returning empty lessons array')
+      return { lessons: [] }
+    }
+    throw error
+  }
 }
 
 /**
  * Get grammar lesson by ID
  */
 export async function getGrammarLesson(lessonId: string) {
-  const response = await fetch(`${API_BASE_URL}/grammar/lessons/${lessonId}`)
-  if (!response.ok) throw new Error('Failed to fetch grammar lesson')
-  return response.json()
+  try {
+    const response = await fetch(`${API_BASE_URL}/grammar/lessons/${lessonId}`)
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('API Error:', response.status, errorText)
+      throw new Error(`Failed to fetch grammar lesson: ${response.status} ${errorText}`)
+    }
+    const data = await response.json()
+    return data
+  } catch (error: any) {
+    console.error('Fetch error:', error)
+    throw error
+  }
 }
 
 /**
@@ -95,6 +120,39 @@ export async function getVocabularyWords(params?: { word?: string; level?: strin
   const url = `${API_BASE_URL}/vocabulary/words${queryParams.toString() ? '?' + queryParams.toString() : ''}`
   const response = await fetch(url)
   if (!response.ok) throw new Error('Failed to fetch vocabulary words')
+  return response.json()
+}
+
+/**
+ * Get vocabulary quiz by ID
+ */
+export async function getVocabularyQuiz(quizId: string) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/vocabulary/quizzes/${quizId}`)
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('API Error:', response.status, errorText)
+      throw new Error(`Failed to fetch vocabulary quiz: ${response.status} ${errorText}`)
+    }
+    const data = await response.json()
+    return data
+  } catch (error: any) {
+    console.error('Fetch error:', error)
+    throw error
+  }
+}
+
+/**
+ * Get vocabulary quizzes list
+ */
+export async function getVocabularyQuizzes(params?: { level?: string; category?: string }) {
+  const queryParams = new URLSearchParams()
+  if (params?.level) queryParams.append('level', params.level)
+  if (params?.category) queryParams.append('category', params.category)
+  
+  const url = `${API_BASE_URL}/vocabulary/quizzes${queryParams.toString() ? '?' + queryParams.toString() : ''}`
+  const response = await fetch(url)
+  if (!response.ok) throw new Error('Failed to fetch vocabulary quizzes')
   return response.json()
 }
 
@@ -124,5 +182,110 @@ export async function batchTranslate(text: string, targetLanguage: string = 'tr'
     console.error('Batch translation error:', error)
     throw error
   }
+}
+
+/**
+ * Admin API functions
+ */
+export async function createGrammarLesson(lesson: any): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/admin/grammar`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(lesson),
+  })
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw new Error(`Failed to create grammar lesson: ${errorText}`)
+  }
+
+  return response.json()
+}
+
+export async function createVocabularyWord(word: any): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/admin/vocabulary`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(word),
+  })
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw new Error(`Failed to create vocabulary word: ${errorText}`)
+  }
+
+  return response.json()
+}
+
+export async function bulkUpload(type: 'grammar_lessons' | 'vocabulary_words', items: any[]): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/admin/bulk`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ type, items }),
+  })
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw new Error(`Failed to bulk upload: ${errorText}`)
+  }
+
+  return response.json()
+}
+
+export async function createGrammarQuiz(quiz: any): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/admin/grammar/quiz`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(quiz),
+  })
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw new Error(`Failed to create grammar quiz: ${errorText}`)
+  }
+
+  return response.json()
+}
+
+export async function createVocabularyQuiz(quiz: any): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/admin/vocabulary/quiz`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(quiz),
+  })
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw new Error(`Failed to create vocabulary quiz: ${errorText}`)
+  }
+
+  return response.json()
+}
+
+export async function cleanupDuplicates(table: 'grammar_lessons' | 'vocabulary_words'): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/admin/cleanup`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ table }),
+  })
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw new Error(`Failed to cleanup duplicates: ${errorText}`)
+  }
+
+  return response.json()
 }
 

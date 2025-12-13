@@ -1,5 +1,6 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useState, useEffect, useMemo } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
+import { getVocabularyQuiz, getVocabularyQuizzes } from '../utils/api'
 
 type QuizType = 'definition' | 'word-selection' | 'multiple-choice'
 
@@ -11,74 +12,88 @@ interface QuizQuestion {
   options: string[]
   correctAnswer: number
   example?: string
+  explanation?: string
 }
 
-// Mock quiz data - will be replaced with DynamoDB data
-const quizQuestions: QuizQuestion[] = [
-  {
-    id: '1',
-    type: 'definition',
-    word: 'abandon',
-    definition: 'to leave behind or give up completely',
-    options: [
-      'to leave behind or give up completely',
-      'to accept something willingly',
-      'to build something new',
-      'to celebrate an event',
-    ],
-    correctAnswer: 0,
-    example: 'They had to abandon their car in the snow.',
-  },
-  {
-    id: '2',
-    type: 'word-selection',
-    word: '',
-    definition: 'the skill or power to do something',
-    options: ['ability', 'absence', 'abstract', 'abundant'],
-    correctAnswer: 0,
-  },
-  {
-    id: '3',
-    type: 'multiple-choice',
-    word: 'abroad',
-    definition: 'in or to a foreign country',
-    options: [
-      'He travels abroad for business.',
-      'He stays abroad for business.',
-      'He works abroad for business.',
-      'All of the above are correct',
-    ],
-    correctAnswer: 3,
-  },
-  {
-    id: '4',
-    type: 'definition',
-    word: 'absolute',
-    definition: 'complete and total',
-    options: [
-      'partial and incomplete',
-      'complete and total',
-      'temporary and short',
-      'uncertain and unclear',
-    ],
-    correctAnswer: 1,
-    example: 'I have absolute confidence in you.',
-  },
-  {
-    id: '5',
-    type: 'word-selection',
-    word: '',
-    definition: 'existing in large quantities',
-    options: ['abstract', 'abundant', 'academic', 'absolute'],
-    correctAnswer: 1,
-  },
-]
+interface VocabularyQuiz {
+  quizId: string
+  title: string
+  level?: string
+  category?: string
+  questions: QuizQuestion[]
+}
 
 export default function VocabularyQuiz() {
+  const [searchParams] = useSearchParams()
+  const quizId = searchParams.get('id')
+  const [quiz, setQuiz] = useState<VocabularyQuiz | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [currentQuestion, setCurrentQuestion] = useState(0)
   const [selectedAnswers, setSelectedAnswers] = useState<Record<number, number>>({})
   const [showResults, setShowResults] = useState(false)
   const [score, setScore] = useState(0)
+
+  useEffect(() => {
+    const fetchQuiz = async () => {
+      if (!quizId) {
+        // If no quiz ID, try to get first available quiz
+        try {
+          const data = await getVocabularyQuizzes()
+          if (data && data.quizzes && data.quizzes.length > 0) {
+            const firstQuiz = await getVocabularyQuiz(data.quizzes[0].quizId)
+            setQuiz(firstQuiz)
+          } else {
+            setError('No quizzes available')
+          }
+        } catch (err: any) {
+          console.error('Failed to fetch quizzes:', err)
+          setError(err.message || 'Failed to load quizzes')
+        } finally {
+          setLoading(false)
+        }
+      } else {
+        try {
+          setLoading(true)
+          const data = await getVocabularyQuiz(quizId)
+          setQuiz(data)
+        } catch (err: any) {
+          console.error('Failed to fetch quiz:', err)
+          setError(err.message || 'Failed to load quiz')
+        } finally {
+          setLoading(false)
+        }
+      }
+    }
+
+    fetchQuiz()
+  }, [quizId])
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading quiz...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error || !quiz) {
+    return (
+      <div className="text-center py-12">
+        <h2 className="text-2xl font-bold text-gray-900 mb-4">{error || 'Quiz not found'}</h2>
+        <Link to="/vocabulary" className="text-primary-600 hover:underline">
+          Back to Vocabulary
+        </Link>
+      </div>
+    )
+  }
+
+  const quizQuestions = useMemo(() => {
+    return quiz?.questions || []
+  }, [quiz])
 
   const handleAnswerSelect = (answerIndex: number) => {
     if (showResults) return
@@ -108,6 +123,17 @@ export default function VocabularyQuiz() {
       }
     })
     setScore(correct)
+  }
+
+  if (quizQuestions.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <h2 className="text-2xl font-bold text-gray-900 mb-4">No questions in this quiz</h2>
+        <Link to="/vocabulary" className="text-primary-600 hover:underline">
+          Back to Vocabulary
+        </Link>
+      </div>
+    )
   }
 
   const currentQ = quizQuestions[currentQuestion]

@@ -1,0 +1,380 @@
+{
+  "grammar_lessons": [
+    {
+      "title": "Present Simple Tense",
+      "subtitle": "Learn the foundation of English grammar",
+      "content": [
+        "The present simple tense is one of the most fundamental tenses in English. It is used to describe habits, unchanging situations, general truths, and fixed arrangements.",
+        "Understanding when and how to use the present simple is essential for effective communication in English."
+      ],
+      "formula": "Subject + Base Verb (+ s/es for he/she/it)",
+      "uses": [
+        {
+          "icon": "🔄",
+          "title": "Habits and Routines",
+          "description": "Actions that happen regularly",
+          "example": "I drink coffee every morning."
+        },
+        {
+          "icon": "🌍",
+          "title": "General Truths",
+          "description": "Facts that are always true",
+          "example": "The sun rises in the east."
+        },
+        {
+          "icon": "📅",
+          "title": "Fixed Arrangements",
+          "description": "Scheduled events and timetables",
+          "example": "The train leaves at 8 AM."
+        },
+        {
+          "icon": "📚",
+          "title": "Timetables",
+          "description": "Scheduled activities",
+          "example": "School starts in September."
+        }
+      ],
+      "examples": [
+        {
+          "sentence": "I work in a hospital.",
+          "explanation": "This describes a regular job or routine."
+        },
+        {
+          "sentence": "She plays tennis every weekend.",
+          "explanation": "Third person singular uses -s form of the verb."
+        },
+        {
+          "sentence": "Water boils at 100 degrees Celsius.",
+          "explanation": "This is a general truth or scientific fact."
+        }
+      ],
+      "tips": [
+        "Remember to add -s or -es for third person singular (he, she, it)",
+        "Use present simple for facts and permanent situations",
+        "Time expressions like \"always\", \"usually\", \"often\" are common with present simple"
+      ],
+      "level": "beginner",
+      "order": 1
+    },
+    {
+      "title": "Present Continuous Tense",
+      "subtitle": "Actions happening now and around the present",
+      "content": [
+        "The present continuous tense describes actions that are happening right now or around the present time. It emphasizes the ongoing nature of an action.",
+        "This tense is formed using a form of \"be\" (am, is, are) plus the verb with -ing ending."
+      ],
+      "formula": "Subject + am/is/are + Verb + -ing",
+      "uses": [
+        {
+          "icon": "⏰",
+          "title": "Actions Happening Now",
+          "description": "What you are doing at this moment",
+          "example": "I am reading a book."
+        },
+        {
+          "icon": "🏠",
+          "title": "Temporary Situations",
+          "description": "Situations that are not permanent",
+          "example": "She is staying with friends this week."
+        },
+        {
+          "icon": "📆",
+          "title": "Future Arrangements",
+          "description": "Planned future events",
+          "example": "We are meeting tomorrow."
+        },
+        {
+          "icon": "📈",
+          "title": "Changing Situations",
+          "description": "Things that are developing",
+          "example": "The weather is getting warmer."
+        }
+      ],
+      "examples": [
+        {
+          "sentence": "I am studying English right now.",
+          "explanation": "Action happening at this moment."
+        },
+        {
+          "sentence": "They are building a new house.",
+          "explanation": "Action in progress, not necessarily right now."
+        },
+        {
+          "sentence": "We are going to the cinema tonight.",
+          "explanation": "Future arrangement that is already planned."
+        }
+      ],
+      "tips": [
+        "Always use am/is/are before the -ing verb",
+        "Use present continuous for temporary actions",
+        "Some verbs (like, know, understand) are rarely used in continuous form"
+      ],
+      "level": "beginner",
+      "order": 2
+    },
+    {
+      "title": "Past Simple Tense",
+      "subtitle": "Learn how to form and use the past simple tense",
+      "content": [
+        "The past simple tense is used to describe completed actions in the past. It is one of the most common tenses in English.",
+        "Regular verbs form the past simple by adding -ed to the base form, while irregular verbs have unique past forms."
+      ],
+      "formula": "Subject + Verb (past form)",
+      "uses": [
+        {
+          "icon": "⏮️",
+          "title": "Completed Actions",
+          "description": "Actions that finished in the past",
+          "example": "I visited Paris last year."
+        },
+        {
+          "icon": "📖",
+          "title": "Past Habits",
+          "description": "Things you did regularly in the past",
+          "example": "She always walked to school."
+        }
+      ],
+      "examples": [
+        {
+          "sentence": "I studied English yesterday.",
+          "explanation": "Completed action in the past."
+        }
+      ],
+      "tips": [
+        "Use past simple for actions that are completely finished",
+        "Time expressions like \"yesterday\", \"last week\" are common"
+      ],
+      "level": "beginner",
+      "order": 3
+    },
+    {
+      "title": "Future Tenses",
+      "subtitle": "Learn about will, going to, and present continuous for future",
+      "content": [
+        "English has several ways to express the future. The most common are 'will', 'going to', and present continuous.",
+        "Each form has specific uses and contexts."
+      ],
+      "formula": "Subject + will/going to + Verb",
+      "level": "intermediate",
+      "order": 4
+    },
+    {
+      "title": "Present Perfect Tense",
+      "subtitle": "Master the present perfect tense and its various uses",
+      "content": [
+        "The present perfect connects the past with the present. It describes actions that happened at an unspecified time or have relevance to now.",
+        "It is formed with 'have/has' + past participle."
+      ],
+      "formula": "Subject + have/has + Past Participle",
+      "level": "intermediate",
+      "order": 5
+    },
+    {
+      "title": "Conditionals",
+      "subtitle": "Learn zero, first, second, and third conditionals",
+      "content": [
+        "Conditionals are used to talk about hypothetical situations and their consequences.",
+        "There are four main types: zero, first, second, and third conditionals."
+      ],
+      "formula": "If + condition, + result",
+      "level": "intermediate",
+      "order": 6
+    }
+  ],
+  "vocabulary_words": [
+    {
+      "word": "abandon",
+      "definition": "to leave behind or give up completely",
+      "example": "They had to abandon their car in the snow.",
+      "partOfSpeech": "verb",
+      "level": "intermediate",
+      "category": "general"
+    },
+    {
+      "word": "ability",
+      "definition": "the skill or power to do something",
+      "example": "She has the ability to speak five languages.",
+      "partOfSpeech": "noun",
+      "level": "beginner",
+      "category": "general"
+    },
+    {
+      "word": "abroad",
+      "definition": "in or to a foreign country",
+      "example": "He travels abroad for business.",
+      "partOfSpeech": "adverb",
+      "level": "beginner",
+      "category": "travel"
+    },
+    {
+      "word": "absence",
+      "definition": "the state of being away or not present",
+      "example": "Her absence was noticed by everyone.",
+      "partOfSpeech": "noun",
+      "level": "intermediate",
+      "category": "general"
+    },
+    {
+      "word": "absolute",
+      "definition": "complete and total",
+      "example": "I have absolute confidence in you.",
+      "partOfSpeech": "adjective",
+      "level": "advanced",
+      "category": "general"
+    },
+    {
+      "word": "absorb",
+      "definition": "to take in or soak up",
+      "example": "Plants absorb water through their roots.",
+      "partOfSpeech": "verb",
+      "level": "intermediate",
+      "category": "science"
+    },
+    {
+      "word": "abstract",
+      "definition": "existing in thought but not having a physical form",
+      "example": "Love is an abstract concept.",
+      "partOfSpeech": "adjective",
+      "level": "advanced",
+      "category": "general"
+    },
+    {
+      "word": "abundant",
+      "definition": "existing in large quantities",
+      "example": "The region has abundant natural resources.",
+      "partOfSpeech": "adjective",
+      "level": "intermediate",
+      "category": "general"
+    },
+    {
+      "word": "academic",
+      "definition": "relating to education and scholarship",
+      "example": "She has an impressive academic record.",
+      "partOfSpeech": "adjective",
+      "level": "intermediate",
+      "category": "education"
+    },
+    {
+      "word": "accept",
+      "definition": "to agree to receive or take",
+      "example": "I accept your invitation.",
+      "partOfSpeech": "verb",
+      "level": "beginner",
+      "category": "general"
+    }
+  ],
+  "grammar_quizzes": [
+    {
+      "lessonId": "1",
+      "title": "Present Simple Tense Quiz",
+      "questions": [
+        {
+          "id": "q1",
+          "question": "Which sentence is correct?",
+          "options": [
+            "I go to school every day.",
+            "I am going to school every day.",
+            "I goes to school every day.",
+            "I going to school every day."
+          ],
+          "correctAnswer": 0,
+          "explanation": "The present simple is used for habits and routines. \"I go\" is the correct form."
+        },
+        {
+          "id": "q2",
+          "question": "Choose the correct form: She _____ coffee in the morning.",
+          "options": ["drink", "drinks", "drinking", "drank"],
+          "correctAnswer": 1,
+          "explanation": "Third person singular (she) requires the -s form: \"drinks\"."
+        },
+        {
+          "id": "q3",
+          "question": "Which sentence uses present simple correctly?",
+          "options": [
+            "The sun is rising in the east.",
+            "The sun rises in the east.",
+            "The sun rose in the east.",
+            "The sun will rise in the east."
+          ],
+          "correctAnswer": 1,
+          "explanation": "General truths use present simple: \"The sun rises in the east.\""
+        }
+      ]
+    },
+    {
+      "lessonId": "2",
+      "title": "Present Continuous Tense Quiz",
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What is the correct form? I _____ a book right now.",
+          "options": ["read", "am reading", "reads", "reading"],
+          "correctAnswer": 1,
+          "explanation": "Actions happening now use present continuous: \"am reading\"."
+        },
+        {
+          "id": "q2",
+          "question": "Which sentence is correct?",
+          "options": [
+            "They are build a house.",
+            "They are building a house.",
+            "They building a house.",
+            "They is building a house."
+          ],
+          "correctAnswer": 1,
+          "explanation": "Present continuous uses \"are + verb + -ing\": \"are building\"."
+        }
+      ]
+    }
+  ],
+  "vocabulary_quizzes": [
+    {
+      "title": "Beginner Vocabulary Quiz",
+      "level": "beginner",
+      "category": "general",
+      "questions": [
+        {
+          "id": "q1",
+          "type": "definition",
+          "word": "abandon",
+          "definition": "to leave behind or give up completely",
+          "options": [
+            "to leave behind or give up completely",
+            "to accept something willingly",
+            "to build something new",
+            "to celebrate an event"
+          ],
+          "correctAnswer": 0,
+          "example": "They had to abandon their car in the snow.",
+          "explanation": ""
+        },
+        {
+          "id": "q2",
+          "type": "word-selection",
+          "word": "",
+          "definition": "the skill or power to do something",
+          "options": ["ability", "absence", "abstract", "abundant"],
+          "correctAnswer": 0,
+          "example": "",
+          "explanation": ""
+        },
+        {
+          "id": "q3",
+          "type": "multiple-choice",
+          "word": "abroad",
+          "definition": "in or to a foreign country",
+          "options": [
+            "He travels abroad for business.",
+            "He stays abroad for business.",
+            "He works abroad for business.",
+            "All of the above are correct"
+          ],
+          "correctAnswer": 3,
+          "example": "",
+          "explanation": ""
+        }
+      ]
+    }
+  ]
+}
+

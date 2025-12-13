@@ -8,6 +8,7 @@ import GrammarLesson from './pages/GrammarLesson'
 import GrammarQuiz from './pages/GrammarQuiz'
 import VocabularyList from './pages/VocabularyList'
 import VocabularyQuiz from './pages/VocabularyQuiz'
+import Admin from './pages/Admin'
 import Layout from './components/Layout'
 
 function App() {
@@ -21,9 +22,10 @@ function App() {
               <Route path="/grammar" element={<Grammar />} />
               <Route path="/grammar/:lessonId" element={<GrammarLesson />} />
               <Route path="/grammar/:lessonId/quiz" element={<GrammarQuiz />} />
-              <Route path="/vocabulary" element={<Vocabulary />} />
-              <Route path="/vocabulary/list" element={<VocabularyList />} />
-              <Route path="/vocabulary/quiz" element={<VocabularyQuiz />} />
+            <Route path="/vocabulary" element={<Vocabulary />} />
+            <Route path="/vocabulary/list" element={<VocabularyList />} />
+            <Route path="/vocabulary/quiz" element={<VocabularyQuiz />} />
+            <Route path="/admin" element={<Admin />} />
             </Routes>
           </Layout>
         </Router>

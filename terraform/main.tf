@@ -319,6 +319,22 @@ resource "aws_dynamodb_table" "vocabulary_words" {
   }
 }
 
+resource "aws_dynamodb_table" "vocabulary_quizzes" {
+  name           = "vocabulary_quizzes"
+  billing_mode   = "PAY_PER_REQUEST"
+  hash_key       = "quizId"
+
+  attribute {
+    name = "quizId"
+    type = "S"
+  }
+
+  tags = {
+    Name        = "Vocabulary Quizzes"
+    Environment = var.environment
+  }
+}
+
 # Word Translations Cache Table (for AWS Translate results)
 resource "aws_dynamodb_table" "word_translations" {
   name           = "word_translations"
@@ -378,6 +394,7 @@ resource "aws_iam_role_policy" "lambda_dynamodb_policy" {
           "${aws_dynamodb_table.grammar_quizzes.arn}/index/*",
           aws_dynamodb_table.vocabulary_words.arn,
           "${aws_dynamodb_table.vocabulary_words.arn}/index/*",
+          aws_dynamodb_table.vocabulary_quizzes.arn,
           aws_dynamodb_table.word_translations.arn
         ]
       },
@@ -418,28 +435,66 @@ data "archive_file" "get_grammar_lessons_zip" {
   type        = "zip"
   source_dir  = "${path.module}/../lambda/get-grammar-lessons"
   output_path = "${path.module}/lambda-packages/get-grammar-lessons.zip"
-  excludes    = ["node_modules"]
 }
 
 data "archive_file" "get_grammar_lesson_zip" {
   type        = "zip"
   source_dir  = "${path.module}/../lambda/get-grammar-lesson"
   output_path = "${path.module}/lambda-packages/get-grammar-lesson.zip"
-  excludes    = ["node_modules"]
 }
 
 data "archive_file" "get_grammar_quiz_zip" {
   type        = "zip"
   source_dir  = "${path.module}/../lambda/get-grammar-quiz"
   output_path = "${path.module}/lambda-packages/get-grammar-quiz.zip"
-  excludes    = ["node_modules"]
 }
 
 data "archive_file" "get_vocabulary_words_zip" {
   type        = "zip"
   source_dir  = "${path.module}/../lambda/get-vocabulary-words"
   output_path = "${path.module}/lambda-packages/get-vocabulary-words.zip"
-  excludes    = ["node_modules"]
+}
+
+data "archive_file" "get_vocabulary_quiz_zip" {
+  type        = "zip"
+  source_dir  = "${path.module}/../lambda/get-vocabulary-quiz"
+  output_path = "${path.module}/lambda-packages/get-vocabulary-quiz.zip"
+}
+
+data "archive_file" "create_grammar_lesson_zip" {
+  type        = "zip"
+  source_dir  = "${path.module}/../lambda/create-grammar-lesson"
+  output_path = "${path.module}/lambda-packages/create-grammar-lesson.zip"
+}
+
+data "archive_file" "create_vocabulary_word_zip" {
+  type        = "zip"
+  source_dir  = "${path.module}/../lambda/create-vocabulary-word"
+  output_path = "${path.module}/lambda-packages/create-vocabulary-word.zip"
+}
+
+data "archive_file" "bulk_upload_zip" {
+  type        = "zip"
+  source_dir  = "${path.module}/../lambda/bulk-upload"
+  output_path = "${path.module}/lambda-packages/bulk-upload.zip"
+}
+
+data "archive_file" "create_grammar_quiz_zip" {
+  type        = "zip"
+  source_dir  = "${path.module}/../lambda/create-grammar-quiz"
+  output_path = "${path.module}/lambda-packages/create-grammar-quiz.zip"
+}
+
+data "archive_file" "create_vocabulary_quiz_zip" {
+  type        = "zip"
+  source_dir  = "${path.module}/../lambda/create-vocabulary-quiz"
+  output_path = "${path.module}/lambda-packages/create-vocabulary-quiz.zip"
+}
+
+data "archive_file" "cleanup_duplicates_zip" {
+  type        = "zip"
+  source_dir  = "${path.module}/../lambda/cleanup-duplicates"
+  output_path = "${path.module}/lambda-packages/cleanup-duplicates.zip"
 }
 
 # Lambda Functions
@@ -586,6 +641,35 @@ resource "aws_lambda_function" "get_vocabulary_words" {
   }
 }
 
+resource "aws_lambda_function" "get_vocabulary_quiz" {
+  filename         = data.archive_file.get_vocabulary_quiz_zip.output_path
+  function_name    = "tilgo-get-vocabulary-quiz"
+  role            = aws_iam_role.lambda_role.arn
+  handler         = "index.handler"
+  source_code_hash = data.archive_file.get_vocabulary_quiz_zip.output_base64sha256
+  runtime         = "nodejs18.x"
+  timeout         = 30
+
+  environment {
+    variables = {
+      VOCABULARY_QUIZZES_TABLE = aws_dynamodb_table.vocabulary_quizzes.name
+    }
+  }
+
+  tags = {
+    Name        = "Get Vocabulary Quiz"
+    Environment = var.environment
+  }
+}
+
+resource "aws_lambda_permission" "get_vocabulary_quiz_api" {
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.get_vocabulary_quiz.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.tilgo_api.execution_arn}/*/*"
+}
+
 resource "aws_lambda_permission" "get_grammar_lessons_api" {
   statement_id  = "AllowExecutionFromAPIGateway"
   action        = "lambda:InvokeFunction"
@@ -618,6 +702,184 @@ resource "aws_lambda_permission" "get_vocabulary_words_api" {
   source_arn    = "${aws_api_gateway_rest_api.tilgo_api.execution_arn}/*/*"
 }
 
+# Admin Lambda Functions
+resource "aws_lambda_function" "create_grammar_lesson" {
+  filename         = data.archive_file.create_grammar_lesson_zip.output_path
+  function_name    = "tilgo-create-grammar-lesson"
+  role            = aws_iam_role.lambda_role.arn
+  handler         = "index.handler"
+  source_code_hash = data.archive_file.create_grammar_lesson_zip.output_base64sha256
+  runtime         = "nodejs18.x"
+  timeout         = 30
+
+  environment {
+    variables = {
+      GRAMMAR_LESSONS_TABLE = aws_dynamodb_table.grammar_lessons.name
+    }
+  }
+
+  tags = {
+    Name        = "Create Grammar Lesson"
+    Environment = var.environment
+  }
+}
+
+resource "aws_lambda_function" "create_vocabulary_word" {
+  filename         = data.archive_file.create_vocabulary_word_zip.output_path
+  function_name    = "tilgo-create-vocabulary-word"
+  role            = aws_iam_role.lambda_role.arn
+  handler         = "index.handler"
+  source_code_hash = data.archive_file.create_vocabulary_word_zip.output_base64sha256
+  runtime         = "nodejs18.x"
+  timeout         = 30
+
+  environment {
+    variables = {
+      VOCABULARY_WORDS_TABLE = aws_dynamodb_table.vocabulary_words.name
+    }
+  }
+
+  tags = {
+    Name        = "Create Vocabulary Word"
+    Environment = var.environment
+  }
+}
+
+resource "aws_lambda_function" "bulk_upload" {
+  filename         = data.archive_file.bulk_upload_zip.output_path
+  function_name    = "tilgo-bulk-upload"
+  role            = aws_iam_role.lambda_role.arn
+  handler         = "index.handler"
+  source_code_hash = data.archive_file.bulk_upload_zip.output_base64sha256
+  runtime         = "nodejs18.x"
+  timeout         = 300
+
+  environment {
+    variables = {
+      GRAMMAR_LESSONS_TABLE = aws_dynamodb_table.grammar_lessons.name
+      VOCABULARY_WORDS_TABLE = aws_dynamodb_table.vocabulary_words.name
+    }
+  }
+
+  tags = {
+    Name        = "Bulk Upload"
+    Environment = var.environment
+  }
+}
+
+resource "aws_lambda_permission" "create_grammar_lesson_api" {
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.create_grammar_lesson.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.tilgo_api.execution_arn}/*/*"
+}
+
+resource "aws_lambda_permission" "create_vocabulary_word_api" {
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.create_vocabulary_word.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.tilgo_api.execution_arn}/*/*"
+}
+
+resource "aws_lambda_permission" "bulk_upload_api" {
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.bulk_upload.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.tilgo_api.execution_arn}/*/*"
+}
+
+# Quiz Lambda Functions
+resource "aws_lambda_function" "create_grammar_quiz" {
+  filename         = data.archive_file.create_grammar_quiz_zip.output_path
+  function_name    = "tilgo-create-grammar-quiz"
+  role            = aws_iam_role.lambda_role.arn
+  handler         = "index.handler"
+  source_code_hash = data.archive_file.create_grammar_quiz_zip.output_base64sha256
+  runtime         = "nodejs18.x"
+  timeout         = 30
+
+  environment {
+    variables = {
+      GRAMMAR_QUIZZES_TABLE = aws_dynamodb_table.grammar_quizzes.name
+    }
+  }
+
+  tags = {
+    Name        = "Create Grammar Quiz"
+    Environment = var.environment
+  }
+}
+
+resource "aws_lambda_function" "create_vocabulary_quiz" {
+  filename         = data.archive_file.create_vocabulary_quiz_zip.output_path
+  function_name    = "tilgo-create-vocabulary-quiz"
+  role            = aws_iam_role.lambda_role.arn
+  handler         = "index.handler"
+  source_code_hash = data.archive_file.create_vocabulary_quiz_zip.output_base64sha256
+  runtime         = "nodejs18.x"
+  timeout         = 30
+
+  environment {
+    variables = {
+      VOCABULARY_QUIZZES_TABLE = aws_dynamodb_table.vocabulary_quizzes.name
+    }
+  }
+
+  tags = {
+    Name        = "Create Vocabulary Quiz"
+    Environment = var.environment
+  }
+}
+
+resource "aws_lambda_function" "cleanup_duplicates" {
+  filename         = data.archive_file.cleanup_duplicates_zip.output_path
+  function_name    = "tilgo-cleanup-duplicates"
+  role            = aws_iam_role.lambda_role.arn
+  handler         = "index.handler"
+  source_code_hash = data.archive_file.cleanup_duplicates_zip.output_base64sha256
+  runtime         = "nodejs18.x"
+  timeout         = 60
+
+  environment {
+    variables = {
+      GRAMMAR_LESSONS_TABLE = aws_dynamodb_table.grammar_lessons.name
+      VOCABULARY_WORDS_TABLE = aws_dynamodb_table.vocabulary_words.name
+    }
+  }
+
+  tags = {
+    Name        = "Cleanup Duplicates"
+    Environment = var.environment
+  }
+}
+
+resource "aws_lambda_permission" "cleanup_duplicates_api" {
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.cleanup_duplicates.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.tilgo_api.execution_arn}/*/*"
+}
+
+resource "aws_lambda_permission" "create_grammar_quiz_api" {
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.create_grammar_quiz.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.tilgo_api.execution_arn}/*/*"
+}
+
+resource "aws_lambda_permission" "create_vocabulary_quiz_api" {
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.create_vocabulary_quiz.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.tilgo_api.execution_arn}/*/*"
+}
+
 # API Gateway
 resource "aws_api_gateway_rest_api" "tilgo_api" {
   name        = "tilgo-api"
@@ -637,18 +899,36 @@ resource "aws_api_gateway_deployment" "tilgo_api" {
       aws_api_gateway_resource.grammar.id,
       aws_api_gateway_resource.vocabulary.id,
       aws_api_gateway_resource.translate.id,
+      aws_api_gateway_resource.admin.id,
+      aws_api_gateway_resource.admin_grammar_quiz.id,
+      aws_api_gateway_resource.admin_vocabulary_quiz.id,
+      aws_api_gateway_resource.admin_cleanup.id,
       aws_api_gateway_method.translate_word_get.id,
       aws_api_gateway_method.translate_batch_post.id,
       aws_api_gateway_method.grammar_lessons_get.id,
       aws_api_gateway_method.grammar_lesson_get.id,
       aws_api_gateway_method.grammar_quiz_get.id,
       aws_api_gateway_method.vocabulary_words_get.id,
+      aws_api_gateway_method.vocabulary_quiz_get.id,
+      aws_api_gateway_method.admin_grammar_post.id,
+      aws_api_gateway_method.admin_vocabulary_post.id,
+      aws_api_gateway_method.admin_bulk_post.id,
+      aws_api_gateway_method.admin_grammar_quiz_post.id,
+      aws_api_gateway_method.admin_vocabulary_quiz_post.id,
+      aws_api_gateway_method.admin_cleanup_post.id,
       aws_lambda_function.translate_word.id,
       aws_lambda_function.batch_translate.id,
       aws_lambda_function.get_grammar_lessons.id,
       aws_lambda_function.get_grammar_lesson.id,
       aws_lambda_function.get_grammar_quiz.id,
       aws_lambda_function.get_vocabulary_words.id,
+      aws_lambda_function.get_vocabulary_quiz.id,
+      aws_lambda_function.create_grammar_lesson.id,
+      aws_lambda_function.create_vocabulary_word.id,
+      aws_lambda_function.bulk_upload.id,
+      aws_lambda_function.create_grammar_quiz.id,
+      aws_lambda_function.create_vocabulary_quiz.id,
+      aws_lambda_function.cleanup_duplicates.id,
     ]))
   }
 
@@ -706,6 +986,18 @@ resource "aws_api_gateway_resource" "vocabulary_words" {
   path_part   = "words"
 }
 
+resource "aws_api_gateway_resource" "vocabulary_quizzes" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  parent_id   = aws_api_gateway_resource.vocabulary.id
+  path_part   = "quizzes"
+}
+
+resource "aws_api_gateway_resource" "vocabulary_quiz" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  parent_id   = aws_api_gateway_resource.vocabulary_quizzes.id
+  path_part   = "{quizId}"
+}
+
 # Translate endpoint
 resource "aws_api_gateway_resource" "translate" {
   rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
@@ -723,6 +1015,49 @@ resource "aws_api_gateway_resource" "translate_batch" {
   rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
   parent_id   = aws_api_gateway_resource.translate.id
   path_part   = "batch"
+}
+
+# Admin API Resources
+resource "aws_api_gateway_resource" "admin" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  parent_id   = aws_api_gateway_rest_api.tilgo_api.root_resource_id
+  path_part   = "admin"
+}
+
+resource "aws_api_gateway_resource" "admin_grammar" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  parent_id   = aws_api_gateway_resource.admin.id
+  path_part   = "grammar"
+}
+
+resource "aws_api_gateway_resource" "admin_vocabulary" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  parent_id   = aws_api_gateway_resource.admin.id
+  path_part   = "vocabulary"
+}
+
+resource "aws_api_gateway_resource" "admin_bulk" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  parent_id   = aws_api_gateway_resource.admin.id
+  path_part   = "bulk"
+}
+
+resource "aws_api_gateway_resource" "admin_grammar_quiz" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  parent_id   = aws_api_gateway_resource.admin_grammar.id
+  path_part   = "quiz"
+}
+
+resource "aws_api_gateway_resource" "admin_vocabulary_quiz" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  parent_id   = aws_api_gateway_resource.admin_vocabulary.id
+  path_part   = "quiz"
+}
+
+resource "aws_api_gateway_resource" "admin_cleanup" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  parent_id   = aws_api_gateway_resource.admin.id
+  path_part   = "cleanup"
 }
 
 # CORS Configuration
@@ -958,6 +1293,64 @@ resource "aws_api_gateway_integration_response" "vocabulary_words_options" {
   }
 }
 
+# Vocabulary Quiz GET
+resource "aws_api_gateway_method" "vocabulary_quiz_get" {
+  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id   = aws_api_gateway_resource.vocabulary_quiz.id
+  http_method   = "GET"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "vocabulary_quiz_get" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.vocabulary_quiz.id
+  http_method = aws_api_gateway_method.vocabulary_quiz_get.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = aws_lambda_function.get_vocabulary_quiz.invoke_arn
+}
+
+resource "aws_api_gateway_method" "vocabulary_quiz_options" {
+  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id   = aws_api_gateway_resource.vocabulary_quiz.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "vocabulary_quiz_options" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.vocabulary_quiz.id
+  http_method = aws_api_gateway_method.vocabulary_quiz_options.http_method
+  type        = "MOCK"
+  request_templates = {
+    "application/json" = "{\"statusCode\": 200}"
+  }
+}
+
+resource "aws_api_gateway_method_response" "vocabulary_quiz_options" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.vocabulary_quiz.id
+  http_method = aws_api_gateway_method.vocabulary_quiz_options.http_method
+  status_code = "200"
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = true
+    "method.response.header.Access-Control-Allow-Methods" = true
+    "method.response.header.Access-Control-Allow-Origin"  = true
+  }
+}
+
+resource "aws_api_gateway_integration_response" "vocabulary_quiz_options" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.vocabulary_quiz.id
+  http_method = aws_api_gateway_method.vocabulary_quiz_options.http_method
+  status_code = aws_api_gateway_method_response.vocabulary_quiz_options.status_code
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+    "method.response.header.Access-Control-Allow-Methods" = "'GET,OPTIONS'"
+    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
+  }
+}
+
 # Translate Word Endpoint
 resource "aws_api_gateway_method" "translate_word_get" {
   rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
@@ -1067,6 +1460,354 @@ resource "aws_api_gateway_integration_response" "translate_batch_options" {
   resource_id = aws_api_gateway_resource.translate_batch.id
   http_method = aws_api_gateway_method.translate_batch_options.http_method
   status_code = aws_api_gateway_method_response.translate_batch_options.status_code
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+    "method.response.header.Access-Control-Allow-Methods" = "'POST,OPTIONS'"
+    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
+  }
+}
+
+# Admin API Endpoints - Create Grammar Lesson
+resource "aws_api_gateway_method" "admin_grammar_post" {
+  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id   = aws_api_gateway_resource.admin_grammar.id
+  http_method   = "POST"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "admin_grammar_post" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.admin_grammar.id
+  http_method = aws_api_gateway_method.admin_grammar_post.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = aws_lambda_function.create_grammar_lesson.invoke_arn
+}
+
+resource "aws_api_gateway_method" "admin_grammar_options" {
+  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id   = aws_api_gateway_resource.admin_grammar.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "admin_grammar_options" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.admin_grammar.id
+  http_method = aws_api_gateway_method.admin_grammar_options.http_method
+  type        = "MOCK"
+  request_templates = {
+    "application/json" = "{\"statusCode\": 200}"
+  }
+}
+
+resource "aws_api_gateway_method_response" "admin_grammar_options" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.admin_grammar.id
+  http_method = aws_api_gateway_method.admin_grammar_options.http_method
+  status_code = "200"
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = true
+    "method.response.header.Access-Control-Allow-Methods" = true
+    "method.response.header.Access-Control-Allow-Origin"  = true
+  }
+}
+
+resource "aws_api_gateway_integration_response" "admin_grammar_options" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.admin_grammar.id
+  http_method = aws_api_gateway_method.admin_grammar_options.http_method
+  status_code = aws_api_gateway_method_response.admin_grammar_options.status_code
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+    "method.response.header.Access-Control-Allow-Methods" = "'POST,OPTIONS'"
+    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
+  }
+}
+
+# Admin API Endpoints - Create Vocabulary Word
+resource "aws_api_gateway_method" "admin_vocabulary_post" {
+  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id   = aws_api_gateway_resource.admin_vocabulary.id
+  http_method   = "POST"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "admin_vocabulary_post" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.admin_vocabulary.id
+  http_method = aws_api_gateway_method.admin_vocabulary_post.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = aws_lambda_function.create_vocabulary_word.invoke_arn
+}
+
+resource "aws_api_gateway_method" "admin_vocabulary_options" {
+  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id   = aws_api_gateway_resource.admin_vocabulary.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "admin_vocabulary_options" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.admin_vocabulary.id
+  http_method = aws_api_gateway_method.admin_vocabulary_options.http_method
+  type        = "MOCK"
+  request_templates = {
+    "application/json" = "{\"statusCode\": 200}"
+  }
+}
+
+resource "aws_api_gateway_method_response" "admin_vocabulary_options" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.admin_vocabulary.id
+  http_method = aws_api_gateway_method.admin_vocabulary_options.http_method
+  status_code = "200"
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = true
+    "method.response.header.Access-Control-Allow-Methods" = true
+    "method.response.header.Access-Control-Allow-Origin"  = true
+  }
+}
+
+resource "aws_api_gateway_integration_response" "admin_vocabulary_options" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.admin_vocabulary.id
+  http_method = aws_api_gateway_method.admin_vocabulary_options.http_method
+  status_code = aws_api_gateway_method_response.admin_vocabulary_options.status_code
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+    "method.response.header.Access-Control-Allow-Methods" = "'POST,OPTIONS'"
+    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
+  }
+}
+
+# Admin API Endpoints - Bulk Upload
+resource "aws_api_gateway_method" "admin_bulk_post" {
+  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id   = aws_api_gateway_resource.admin_bulk.id
+  http_method   = "POST"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "admin_bulk_post" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.admin_bulk.id
+  http_method = aws_api_gateway_method.admin_bulk_post.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = aws_lambda_function.bulk_upload.invoke_arn
+}
+
+resource "aws_api_gateway_method" "admin_bulk_options" {
+  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id   = aws_api_gateway_resource.admin_bulk.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "admin_bulk_options" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.admin_bulk.id
+  http_method = aws_api_gateway_method.admin_bulk_options.http_method
+  type        = "MOCK"
+  request_templates = {
+    "application/json" = "{\"statusCode\": 200}"
+  }
+}
+
+resource "aws_api_gateway_method_response" "admin_bulk_options" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.admin_bulk.id
+  http_method = aws_api_gateway_method.admin_bulk_options.http_method
+  status_code = "200"
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = true
+    "method.response.header.Access-Control-Allow-Methods" = true
+    "method.response.header.Access-Control-Allow-Origin"  = true
+  }
+}
+
+resource "aws_api_gateway_integration_response" "admin_bulk_options" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.admin_bulk.id
+  http_method = aws_api_gateway_method.admin_bulk_options.http_method
+  status_code = aws_api_gateway_method_response.admin_bulk_options.status_code
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+    "method.response.header.Access-Control-Allow-Methods" = "'POST,OPTIONS'"
+    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
+  }
+}
+
+# Admin API Endpoints - Create Grammar Quiz
+resource "aws_api_gateway_method" "admin_grammar_quiz_post" {
+  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id   = aws_api_gateway_resource.admin_grammar_quiz.id
+  http_method   = "POST"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "admin_grammar_quiz_post" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.admin_grammar_quiz.id
+  http_method = aws_api_gateway_method.admin_grammar_quiz_post.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = aws_lambda_function.create_grammar_quiz.invoke_arn
+}
+
+resource "aws_api_gateway_method" "admin_grammar_quiz_options" {
+  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id   = aws_api_gateway_resource.admin_grammar_quiz.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "admin_grammar_quiz_options" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.admin_grammar_quiz.id
+  http_method = aws_api_gateway_method.admin_grammar_quiz_options.http_method
+  type        = "MOCK"
+  request_templates = {
+    "application/json" = "{\"statusCode\": 200}"
+  }
+}
+
+resource "aws_api_gateway_method_response" "admin_grammar_quiz_options" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.admin_grammar_quiz.id
+  http_method = aws_api_gateway_method.admin_grammar_quiz_options.http_method
+  status_code = "200"
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = true
+    "method.response.header.Access-Control-Allow-Methods" = true
+    "method.response.header.Access-Control-Allow-Origin"  = true
+  }
+}
+
+resource "aws_api_gateway_integration_response" "admin_grammar_quiz_options" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.admin_grammar_quiz.id
+  http_method = aws_api_gateway_method.admin_grammar_quiz_options.http_method
+  status_code = aws_api_gateway_method_response.admin_grammar_quiz_options.status_code
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+    "method.response.header.Access-Control-Allow-Methods" = "'POST,OPTIONS'"
+    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
+  }
+}
+
+# Admin API Endpoints - Create Vocabulary Quiz
+resource "aws_api_gateway_method" "admin_vocabulary_quiz_post" {
+  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id   = aws_api_gateway_resource.admin_vocabulary_quiz.id
+  http_method   = "POST"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "admin_vocabulary_quiz_post" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.admin_vocabulary_quiz.id
+  http_method = aws_api_gateway_method.admin_vocabulary_quiz_post.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = aws_lambda_function.create_vocabulary_quiz.invoke_arn
+}
+
+resource "aws_api_gateway_method" "admin_vocabulary_quiz_options" {
+  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id   = aws_api_gateway_resource.admin_vocabulary_quiz.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "admin_vocabulary_quiz_options" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.admin_vocabulary_quiz.id
+  http_method = aws_api_gateway_method.admin_vocabulary_quiz_options.http_method
+  type        = "MOCK"
+  request_templates = {
+    "application/json" = "{\"statusCode\": 200}"
+  }
+}
+
+resource "aws_api_gateway_method_response" "admin_vocabulary_quiz_options" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.admin_vocabulary_quiz.id
+  http_method = aws_api_gateway_method.admin_vocabulary_quiz_options.http_method
+  status_code = "200"
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = true
+    "method.response.header.Access-Control-Allow-Methods" = true
+    "method.response.header.Access-Control-Allow-Origin"  = true
+  }
+}
+
+resource "aws_api_gateway_integration_response" "admin_vocabulary_quiz_options" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.admin_vocabulary_quiz.id
+  http_method = aws_api_gateway_method.admin_vocabulary_quiz_options.http_method
+  status_code = aws_api_gateway_method_response.admin_vocabulary_quiz_options.status_code
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+    "method.response.header.Access-Control-Allow-Methods" = "'POST,OPTIONS'"
+    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
+  }
+}
+
+# Admin API Endpoints - Cleanup Duplicates
+resource "aws_api_gateway_method" "admin_cleanup_post" {
+  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id   = aws_api_gateway_resource.admin_cleanup.id
+  http_method   = "POST"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "admin_cleanup_post" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.admin_cleanup.id
+  http_method = aws_api_gateway_method.admin_cleanup_post.http_method
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = aws_lambda_function.cleanup_duplicates.invoke_arn
+}
+
+resource "aws_api_gateway_method" "admin_cleanup_options" {
+  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id   = aws_api_gateway_resource.admin_cleanup.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "admin_cleanup_options" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.admin_cleanup.id
+  http_method = aws_api_gateway_method.admin_cleanup_options.http_method
+  type        = "MOCK"
+  request_templates = {
+    "application/json" = "{\"statusCode\": 200}"
+  }
+}
+
+resource "aws_api_gateway_method_response" "admin_cleanup_options" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.admin_cleanup.id
+  http_method = aws_api_gateway_method.admin_cleanup_options.http_method
+  status_code = "200"
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = true
+    "method.response.header.Access-Control-Allow-Methods" = true
+    "method.response.header.Access-Control-Allow-Origin"  = true
+  }
+}
+
+resource "aws_api_gateway_integration_response" "admin_cleanup_options" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.admin_cleanup.id
+  http_method = aws_api_gateway_method.admin_cleanup_options.http_method
+  status_code = aws_api_gateway_method_response.admin_cleanup_options.status_code
   response_parameters = {
     "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
     "method.response.header.Access-Control-Allow-Methods" = "'POST,OPTIONS'"

@@ -1,10 +1,10 @@
 import { useParams, Link } from 'react-router-dom'
-import { useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import ClickableText from '../components/ClickableText'
-import { useBatchTranslate } from '../hooks/useBatchTranslate'
+import { getGrammarLesson } from '../utils/api'
 
-// Mock data - will be replaced with DynamoDB data
-const lessons: Record<string, {
+interface Lesson {
+  lessonId: string
   title: string
   subtitle: string
   content: string[]
@@ -12,146 +12,74 @@ const lessons: Record<string, {
   uses: { icon: string; title: string; description: string; example: string }[]
   examples: { sentence: string; explanation: string }[]
   tips?: string[]
-}> = {
-  '1': {
-    title: 'Present Simple Tense',
-    subtitle: 'Learn the foundation of English grammar',
-    content: [
-      'The present simple tense is one of the most fundamental tenses in English. It is used to describe habits, unchanging situations, general truths, and fixed arrangements.',
-      'Understanding when and how to use the present simple is essential for effective communication in English.',
-    ],
-    formula: 'Subject + Base Verb (+ s/es for he/she/it)',
-    uses: [
-      {
-        icon: '🔄',
-        title: 'Habits and Routines',
-        description: 'Actions that happen regularly',
-        example: 'I drink coffee every morning.',
-      },
-      {
-        icon: '🌍',
-        title: 'General Truths',
-        description: 'Facts that are always true',
-        example: 'The sun rises in the east.',
-      },
-      {
-        icon: '📅',
-        title: 'Fixed Arrangements',
-        description: 'Scheduled events and timetables',
-        example: 'The train leaves at 8 AM.',
-      },
-      {
-        icon: '📚',
-        title: 'Timetables',
-        description: 'Scheduled activities',
-        example: 'School starts in September.',
-      },
-    ],
-    examples: [
-      {
-        sentence: 'I work in a hospital.',
-        explanation: 'This describes a regular job or routine.',
-      },
-      {
-        sentence: 'She plays tennis every weekend.',
-        explanation: 'Third person singular uses -s form of the verb.',
-      },
-      {
-        sentence: 'Water boils at 100 degrees Celsius.',
-        explanation: 'This is a general truth or scientific fact.',
-      },
-    ],
-    tips: [
-      'Remember to add -s or -es for third person singular (he, she, it)',
-      'Use present simple for facts and permanent situations',
-      'Time expressions like "always", "usually", "often" are common with present simple',
-    ],
-  },
-  '2': {
-    title: 'Present Continuous Tense',
-    subtitle: 'Actions happening now and around the present',
-    content: [
-      'The present continuous tense describes actions that are happening right now or around the present time. It emphasizes the ongoing nature of an action.',
-      'This tense is formed using a form of "be" (am, is, are) plus the verb with -ing ending.',
-    ],
-    formula: 'Subject + am/is/are + Verb + -ing',
-    uses: [
-      {
-        icon: '⏰',
-        title: 'Actions Happening Now',
-        description: 'What you are doing at this moment',
-        example: 'I am reading a book.',
-      },
-      {
-        icon: '🏠',
-        title: 'Temporary Situations',
-        description: 'Situations that are not permanent',
-        example: 'She is staying with friends this week.',
-      },
-      {
-        icon: '📆',
-        title: 'Future Arrangements',
-        description: 'Planned future events',
-        example: 'We are meeting tomorrow.',
-      },
-      {
-        icon: '📈',
-        title: 'Changing Situations',
-        description: 'Things that are developing',
-        example: 'The weather is getting warmer.',
-      },
-    ],
-    examples: [
-      {
-        sentence: 'I am studying English right now.',
-        explanation: 'Action happening at this moment.',
-      },
-      {
-        sentence: 'They are building a new house.',
-        explanation: 'Action in progress, not necessarily right now.',
-      },
-      {
-        sentence: 'We are going to the cinema tonight.',
-        explanation: 'Future arrangement that is already planned.',
-      },
-    ],
-    tips: [
-      'Always use am/is/are before the -ing verb',
-      'Use present continuous for temporary actions',
-      'Some verbs (like, know, understand) are rarely used in continuous form',
-    ],
-  },
 }
 
 export default function GrammarLesson() {
   const { lessonId } = useParams<{ lessonId: string }>()
-  const lesson = lessonId ? lessons[lessonId] : null
+  const [lesson, setLesson] = useState<Lesson | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  // Extract all text content for batch translation
-  const allTexts = useMemo(() => {
-    if (!lesson) return []
-    
-    const texts: string[] = []
-    // Add content paragraphs
-    texts.push(...lesson.content)
-    // Add formula if exists
-    if (lesson.formula) texts.push(lesson.formula)
-    // Add uses examples
-    lesson.uses.forEach(use => {
-      texts.push(use.description, use.example)
-    })
-    // Add example sentences
-    lesson.examples.forEach(example => {
-      texts.push(example.sentence, example.explanation)
-    })
-    // Add tips
-    if (lesson.tips) texts.push(...lesson.tips)
-    
-    return texts
-  }, [lesson])
+  useEffect(() => {
+    const fetchLesson = async () => {
+      if (!lessonId) return
+      
+      try {
+        setLoading(true)
+        const data = await getGrammarLesson(lessonId)
+        console.log('Fetched lesson data:', data)
+        
+        // Ensure all required fields have default values
+        if (data) {
+          setLesson({
+            lessonId: data.lessonId || lessonId,
+            title: data.title || 'Untitled Lesson',
+            subtitle: data.subtitle || '',
+            content: Array.isArray(data.content) ? data.content : [],
+            formula: data.formula || '',
+            uses: Array.isArray(data.uses) ? data.uses : [],
+            examples: Array.isArray(data.examples) ? data.examples : [],
+            tips: Array.isArray(data.tips) ? data.tips : [],
+          })
+        } else {
+          setError('Lesson data is empty')
+        }
+      } catch (err: any) {
+        console.error('Failed to fetch lesson:', err)
+        setError(err.message || 'Failed to load lesson')
+      } finally {
+        setLoading(false)
+      }
+    }
 
-  // Batch translate all words in the lesson
-  useBatchTranslate(allTexts)
+    fetchLesson()
+  }, [lessonId])
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading lesson...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error || !lesson) {
+    return (
+      <div className="text-center py-12">
+        <h2 className="text-2xl font-bold text-gray-900 mb-4">{error || 'Lesson not found'}</h2>
+        <Link to="/grammar" className="text-primary-600 hover:underline">
+          Back to Grammar Lessons
+        </Link>
+      </div>
+    )
+  }
+
+
+  // Batch translation disabled temporarily to fix infinite loop issue
+  // Will be re-enabled after fixing the useBatchTranslate hook
 
   if (!lesson) {
     return (
@@ -201,11 +129,17 @@ export default function GrammarLesson() {
             </svg>
           </div>
           <div className="space-y-2 sm:space-y-3 flex-1">
-            {lesson.content.map((paragraph, index) => (
-              <p key={index} className="text-sm sm:text-base md:text-lg text-gray-700 leading-relaxed">
-                {paragraph}
+            {Array.isArray(lesson.content) && lesson.content.length > 0 ? (
+              lesson.content.map((paragraph, index) => (
+                <p key={index} className="text-sm sm:text-base md:text-lg text-gray-700 leading-relaxed">
+                  {paragraph}
+                </p>
+              ))
+            ) : (
+              <p className="text-sm sm:text-base md:text-lg text-gray-700 leading-relaxed">
+                No content available for this lesson.
               </p>
-            ))}
+            )}
           </div>
         </div>
       </div>
@@ -228,17 +162,18 @@ export default function GrammarLesson() {
       )}
 
       {/* Uses Section */}
-      <div>
-        <div className="flex items-center mb-4 sm:mb-6">
-          <div className="w-8 h-8 sm:w-10 sm:h-10 bg-green-100 rounded-lg flex items-center justify-center mr-2 sm:mr-3 flex-shrink-0">
-            <svg className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
+      {Array.isArray(lesson.uses) && lesson.uses.length > 0 && (
+        <div>
+          <div className="flex items-center mb-4 sm:mb-6">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-green-100 rounded-lg flex items-center justify-center mr-2 sm:mr-3 flex-shrink-0">
+              <svg className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">When to Use</h2>
           </div>
-          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">When to Use</h2>
-        </div>
-        <div className="grid sm:grid-cols-2 gap-3 sm:gap-4">
-          {lesson.uses.map((use, index) => (
+          <div className="grid sm:grid-cols-2 gap-3 sm:gap-4">
+            {lesson.uses.map((use, index) => (
             <div
               key={index}
               className="bg-white rounded-lg sm:rounded-xl shadow-md p-4 sm:p-6 hover:shadow-lg transition-shadow border border-gray-100 group"
@@ -256,23 +191,25 @@ export default function GrammarLesson() {
                 </div>
               </div>
             </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Examples Section */}
-      <div>
-        <div className="flex items-center mb-4 sm:mb-6">
-          <div className="w-8 h-8 sm:w-10 sm:h-10 bg-yellow-100 rounded-lg flex items-center justify-center mr-2 sm:mr-3 flex-shrink-0">
-            <svg className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-            </svg>
+      {Array.isArray(lesson.examples) && lesson.examples.length > 0 && (
+        <div>
+          <div className="flex items-center mb-4 sm:mb-6">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-yellow-100 rounded-lg flex items-center justify-center mr-2 sm:mr-3 flex-shrink-0">
+              <svg className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">Examples</h2>
           </div>
-          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">Examples</h2>
-        </div>
-        <div className="space-y-3 sm:space-y-4">
-          {lesson.examples.map((example, index) => (
+          <div className="space-y-3 sm:space-y-4">
+            {lesson.examples.map((example, index) => (
             <div
               key={index}
               className="bg-gradient-to-r from-primary-50 to-blue-50 rounded-lg sm:rounded-xl p-4 sm:p-6 border-l-4 border-primary-500 shadow-md hover:shadow-lg transition-shadow"
@@ -294,12 +231,13 @@ export default function GrammarLesson() {
                 </div>
               </div>
             </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Tips Section */}
-      {lesson.tips && (
+      {Array.isArray(lesson.tips) && lesson.tips.length > 0 && (
         <div className="bg-yellow-50 rounded-lg sm:rounded-xl shadow-md p-4 sm:p-6 border-2 border-yellow-200">
           <div className="flex items-center mb-3 sm:mb-4">
             <div className="w-8 h-8 sm:w-10 sm:h-10 bg-yellow-500 rounded-lg flex items-center justify-center mr-2 sm:mr-3 flex-shrink-0">
