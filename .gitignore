@@ -23,3 +23,8 @@ dist-ssr
 *.sln
 *.sw?
 
+# Local documentation files
+KURULUM_LISTESI.md
+INSTALL_TERRAFORM.md
+install-terraform.ps1
+
