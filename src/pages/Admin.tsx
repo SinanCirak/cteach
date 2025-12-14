@@ -1,15 +1,15 @@
 import { useState, useEffect } from 'react'
 import { createLesson, createTerm, bulkUpload, createLessonQuiz, createTermsQuiz, getLessons, cleanupDuplicates, getLevels, createLevel, updateLevel, deleteLevel, getCategories, createCategory, updateCategory, deleteCategory, getImageUploadUrl, getAppConfig, updateAppConfig, type Level, type Category, type AppConfig } from '../utils/api'
 
-type TabType = 'grammar' | 'terms' | 'bulk' | 'grammar-quiz' | 'terms-quiz' | 'levels' | 'categories' | 'images' | 'settings' | 'template'
+type TabType = 'lesson' | 'terms' | 'bulk' | 'lesson-quiz' | 'terms-quiz' | 'levels' | 'categories' | 'images' | 'settings' | 'template'
 
 export default function Admin() {
-  const [activeTab, setActiveTab] = useState<TabType>('grammar')
+  const [activeTab, setActiveTab] = useState<TabType>('lesson')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
-  // Grammar lesson form
-  const [grammarForm, setGrammarForm] = useState({
+  // Lesson form
+  const [lessonForm, setLessonForm] = useState({
     title: '',
     subtitle: '',
     content: '',
@@ -40,8 +40,8 @@ export default function Admin() {
   const [bulkData, setBulkData] = useState('')
   const [bulkType, setBulkType] = useState<'lessons' | 'terms'>('lessons')
 
-  // Grammar quiz form
-  const [grammarQuizForm, setGrammarQuizForm] = useState({
+  // Lesson quiz form
+  const [lessonQuizForm, setLessonQuizForm] = useState({
     lessonId: '',
     title: '',
     questions: [] as Array<{ id: string; question: string; options: string[]; correctAnswer: number; explanation: string }>,
@@ -56,7 +56,7 @@ export default function Admin() {
   })
 
   // Form state for dynamic quiz questions
-  const [newGrammarQuestion, setNewGrammarQuestion] = useState({ question: '', options: ['', '', '', ''], correctAnswer: 0, explanation: '' })
+  const [newLessonQuestion, setNewLessonQuestion] = useState({ question: '', options: ['', '', '', ''], correctAnswer: 0, explanation: '' })
   const [newTermsQuestion, setNewTermsQuestion] = useState({ type: 'definition', term: '', definition: '', options: ['', '', '', ''], correctAnswer: 0, example: '', explanation: '' })
 
   // Available lessons for quiz
@@ -83,8 +83,8 @@ export default function Admin() {
   })
 
   useEffect(() => {
-    // Load available grammar lessons (only when grammar-quiz tab is active)
-    if (activeTab === 'grammar-quiz') {
+    // Load available lessons (only when lesson-quiz tab is active)
+    if (activeTab === 'lesson-quiz') {
       getLessons()
         .then((data: any) => {
           if (data && data.lessons) {
@@ -142,19 +142,19 @@ export default function Admin() {
     setTimeout(() => setMessage(null), 5000)
   }
 
-  const handleGrammarSubmit = async (e: React.FormEvent) => {
+  const handleLessonSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setMessage(null)
 
     try {
       const lesson = {
-        ...grammarForm,
-        content: grammarForm.content.split('\n').filter(line => line.trim()),
+        ...lessonForm,
+        content: lessonForm.content.split('\n').filter(line => line.trim()),
       }
       await createLesson(lesson)
-      showMessage('success', 'Grammar lesson created successfully!')
-      setGrammarForm({
+      showMessage('success', 'Lesson created successfully!')
+      setLessonForm({
         title: '',
         subtitle: '',
         content: '',
@@ -169,7 +169,7 @@ export default function Admin() {
       setNewExample({ sentence: '', explanation: '' })
       setNewTip('')
     } catch (error: any) {
-      showMessage('error', error.message || 'Failed to create grammar lesson')
+      showMessage('error', error.message || 'Failed to create lesson')
     } finally {
       setLoading(false)
     }
@@ -236,14 +236,14 @@ export default function Admin() {
           {/* Tabs */}
           <div className="flex space-x-4 mb-8 border-b border-gray-200">
             <button
-              onClick={() => setActiveTab('grammar')}
+              onClick={() => setActiveTab('lesson')}
               className={`px-6 py-3 font-semibold transition-colors ${
-                activeTab === 'grammar'
+                activeTab === 'lesson'
                   ? 'text-primary-600 border-b-2 border-primary-600'
                   : 'text-gray-500 hover:text-gray-700'
               }`}
             >
-              Grammar Lesson
+              Lesson
             </button>
             <button
               onClick={() => setActiveTab('terms')}
@@ -266,14 +266,14 @@ export default function Admin() {
               Bulk Upload
             </button>
             <button
-              onClick={() => setActiveTab('grammar-quiz')}
+              onClick={() => setActiveTab('lesson-quiz')}
               className={`px-6 py-3 font-semibold transition-colors ${
-                activeTab === 'grammar-quiz'
+                activeTab === 'lesson-quiz'
                   ? 'text-primary-600 border-b-2 border-primary-600'
                   : 'text-gray-500 hover:text-gray-700'
               }`}
             >
-              Grammar Quiz
+              Lesson Quiz
             </button>
             <button
               onClick={() => setActiveTab('terms-quiz')}
@@ -337,16 +337,16 @@ export default function Admin() {
             </button>
           </div>
 
-          {/* Grammar Lesson Form */}
-          {activeTab === 'grammar' && (
-            <form onSubmit={handleGrammarSubmit} className="space-y-6">
+          {/* Lesson Form */}
+          {activeTab === 'lesson' && (
+            <form onSubmit={handleLessonSubmit} className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Title *</label>
                 <input
                   type="text"
                   required
-                  value={grammarForm.title}
-                  onChange={(e) => setGrammarForm({ ...grammarForm, title: e.target.value })}
+                  value={lessonForm.title}
+                  onChange={(e) => setLessonForm({ ...lessonForm, title: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 />
               </div>
@@ -355,8 +355,8 @@ export default function Admin() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">Subtitle</label>
                 <input
                   type="text"
-                  value={grammarForm.subtitle}
-                  onChange={(e) => setGrammarForm({ ...grammarForm, subtitle: e.target.value })}
+                  value={lessonForm.subtitle}
+                  onChange={(e) => setLessonForm({ ...lessonForm, subtitle: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 />
               </div>
@@ -366,8 +366,8 @@ export default function Admin() {
                 <textarea
                   required
                   rows={6}
-                  value={grammarForm.content}
-                  onChange={(e) => setGrammarForm({ ...grammarForm, content: e.target.value })}
+                  value={lessonForm.content}
+                  onChange={(e) => setLessonForm({ ...lessonForm, content: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   placeholder="Enter content paragraphs, one per line..."
                 />
@@ -377,8 +377,8 @@ export default function Admin() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">Formula</label>
                 <input
                   type="text"
-                  value={grammarForm.formula}
-                  onChange={(e) => setGrammarForm({ ...grammarForm, formula: e.target.value })}
+                  value={lessonForm.formula}
+                  onChange={(e) => setLessonForm({ ...lessonForm, formula: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   placeholder="e.g., Subject + Verb + Object"
                 />
@@ -388,8 +388,8 @@ export default function Admin() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Level</label>
                   <select
-                    value={grammarForm.level}
-                    onChange={(e) => setGrammarForm({ ...grammarForm, level: e.target.value })}
+                    value={lessonForm.level}
+                    onChange={(e) => setLessonForm({ ...lessonForm, level: e.target.value })}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   >
                     <option value="beginner">Beginner</option>
@@ -402,8 +402,8 @@ export default function Admin() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">Order</label>
                   <input
                     type="number"
-                    value={grammarForm.order}
-                    onChange={(e) => setGrammarForm({ ...grammarForm, order: parseInt(e.target.value) || 0 })}
+                    value={lessonForm.order}
+                    onChange={(e) => setLessonForm({ ...lessonForm, order: parseInt(e.target.value) || 0 })}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   />
                 </div>
@@ -412,7 +412,7 @@ export default function Admin() {
               {/* Where to Use Section */}
               <div className="border-t pt-6">
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">Where to Use</h3>
-                {grammarForm.uses.map((use, index) => (
+                {lessonForm.uses.map((use, index) => (
                   <div key={index} className="mb-4 p-4 bg-gray-50 rounded-lg">
                     <div className="flex justify-between items-start mb-2">
                       <div className="flex-1 grid grid-cols-4 gap-2">
@@ -421,9 +421,9 @@ export default function Admin() {
                           placeholder="Icon (emoji)"
                           value={use.icon}
                           onChange={(e) => {
-                            const newUses = [...grammarForm.uses]
+                            const newUses = [...lessonForm.uses]
                             newUses[index].icon = e.target.value
-                            setGrammarForm({ ...grammarForm, uses: newUses })
+                            setLessonForm({ ...lessonForm, uses: newUses })
                           }}
                           className="px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-primary-500"
                         />
@@ -432,9 +432,9 @@ export default function Admin() {
                           placeholder="Title"
                           value={use.title}
                           onChange={(e) => {
-                            const newUses = [...grammarForm.uses]
+                            const newUses = [...lessonForm.uses]
                             newUses[index].title = e.target.value
-                            setGrammarForm({ ...grammarForm, uses: newUses })
+                            setLessonForm({ ...lessonForm, uses: newUses })
                           }}
                           className="px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-primary-500"
                         />
@@ -443,9 +443,9 @@ export default function Admin() {
                           placeholder="Description"
                           value={use.description}
                           onChange={(e) => {
-                            const newUses = [...grammarForm.uses]
+                            const newUses = [...lessonForm.uses]
                             newUses[index].description = e.target.value
-                            setGrammarForm({ ...grammarForm, uses: newUses })
+                            setLessonForm({ ...lessonForm, uses: newUses })
                           }}
                           className="px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-primary-500"
                         />
@@ -454,9 +454,9 @@ export default function Admin() {
                           placeholder="Example"
                           value={use.example}
                           onChange={(e) => {
-                            const newUses = [...grammarForm.uses]
+                            const newUses = [...lessonForm.uses]
                             newUses[index].example = e.target.value
-                            setGrammarForm({ ...grammarForm, uses: newUses })
+                            setLessonForm({ ...lessonForm, uses: newUses })
                           }}
                           className="px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-primary-500"
                         />
@@ -464,8 +464,8 @@ export default function Admin() {
                       <button
                         type="button"
                         onClick={() => {
-                          const newUses = grammarForm.uses.filter((_, i) => i !== index)
-                          setGrammarForm({ ...grammarForm, uses: newUses })
+                          const newUses = lessonForm.uses.filter((_, i) => i !== index)
+                          setLessonForm({ ...lessonForm, uses: newUses })
                         }}
                         className="ml-2 text-red-600 hover:text-red-800"
                       >
@@ -509,7 +509,7 @@ export default function Admin() {
                     type="button"
                     onClick={() => {
                       if (newUse.title && newUse.description) {
-                        setGrammarForm({ ...grammarForm, uses: [...grammarForm.uses, newUse] })
+                        setLessonForm({ ...lessonForm, uses: [...lessonForm.uses, newUse] })
                         setNewUse({ icon: '', title: '', description: '', example: '' })
                       }
                     }}
@@ -523,7 +523,7 @@ export default function Admin() {
               {/* Examples Section */}
               <div className="border-t pt-6">
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">Examples</h3>
-                {grammarForm.examples.map((example, index) => (
+                {lessonForm.examples.map((example, index) => (
                   <div key={index} className="mb-4 p-4 bg-gray-50 rounded-lg">
                     <div className="flex justify-between items-start">
                       <div className="flex-1 grid grid-cols-2 gap-2">
@@ -532,9 +532,9 @@ export default function Admin() {
                           placeholder="Sentence"
                           value={example.sentence}
                           onChange={(e) => {
-                            const newExamples = [...grammarForm.examples]
+                            const newExamples = [...lessonForm.examples]
                             newExamples[index].sentence = e.target.value
-                            setGrammarForm({ ...grammarForm, examples: newExamples })
+                            setLessonForm({ ...lessonForm, examples: newExamples })
                           }}
                           className="px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-primary-500"
                         />
@@ -543,9 +543,9 @@ export default function Admin() {
                           placeholder="Explanation"
                           value={example.explanation}
                           onChange={(e) => {
-                            const newExamples = [...grammarForm.examples]
+                            const newExamples = [...lessonForm.examples]
                             newExamples[index].explanation = e.target.value
-                            setGrammarForm({ ...grammarForm, examples: newExamples })
+                            setLessonForm({ ...lessonForm, examples: newExamples })
                           }}
                           className="px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-primary-500"
                         />
@@ -553,8 +553,8 @@ export default function Admin() {
                       <button
                         type="button"
                         onClick={() => {
-                          const newExamples = grammarForm.examples.filter((_, i) => i !== index)
-                          setGrammarForm({ ...grammarForm, examples: newExamples })
+                          const newExamples = lessonForm.examples.filter((_, i) => i !== index)
+                          setLessonForm({ ...lessonForm, examples: newExamples })
                         }}
                         className="ml-2 text-red-600 hover:text-red-800"
                       >
@@ -584,7 +584,7 @@ export default function Admin() {
                     type="button"
                     onClick={() => {
                       if (newExample.sentence) {
-                        setGrammarForm({ ...grammarForm, examples: [...grammarForm.examples, newExample] })
+                        setLessonForm({ ...lessonForm, examples: [...lessonForm.examples, newExample] })
                         setNewExample({ sentence: '', explanation: '' })
                       }
                     }}
@@ -598,14 +598,14 @@ export default function Admin() {
               {/* Pro Tips Section */}
               <div className="border-t pt-6">
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">Pro Tips</h3>
-                {grammarForm.tips.map((tip, index) => (
+                {lessonForm.tips.map((tip, index) => (
                   <div key={index} className="mb-2 p-3 bg-gray-50 rounded-lg flex justify-between items-center">
                     <span>{tip}</span>
                     <button
                       type="button"
                       onClick={() => {
-                        const newTips = grammarForm.tips.filter((_, i) => i !== index)
-                        setGrammarForm({ ...grammarForm, tips: newTips })
+                        const newTips = lessonForm.tips.filter((_, i) => i !== index)
+                        setLessonForm({ ...lessonForm, tips: newTips })
                       }}
                       className="ml-2 text-red-600 hover:text-red-800"
                     >
@@ -623,7 +623,7 @@ export default function Admin() {
                     onKeyPress={(e) => {
                       if (e.key === 'Enter' && newTip.trim()) {
                         e.preventDefault()
-                        setGrammarForm({ ...grammarForm, tips: [...grammarForm.tips, newTip] })
+                        setLessonForm({ ...lessonForm, tips: [...lessonForm.tips, newTip] })
                         setNewTip('')
                       }
                     }}
@@ -632,7 +632,7 @@ export default function Admin() {
                     type="button"
                     onClick={() => {
                       if (newTip.trim()) {
-                        setGrammarForm({ ...grammarForm, tips: [...grammarForm.tips, newTip] })
+                        setLessonForm({ ...lessonForm, tips: [...lessonForm.tips, newTip] })
                         setNewTip('')
                       }
                     }}
@@ -648,13 +648,13 @@ export default function Admin() {
                 disabled={loading}
                 className="w-full bg-primary-600 text-white py-3 rounded-lg font-semibold hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? 'Creating...' : 'Create Grammar Lesson'}
+                {loading ? 'Creating...' : 'Create Lesson'}
               </button>
             </form>
           )}
 
           {/* Term Form */}
-          {activeTab === 'Terms' && (
+          {activeTab === 'terms' && (
             <form onSubmit={handleTermsSubmit} className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Term *</label>
@@ -750,12 +750,12 @@ export default function Admin() {
                 <div className="flex gap-2">
                   <button
                     onClick={async () => {
-                      if (!confirm('Are you sure you want to clean duplicate grammar lessons? This action cannot be undone.')) return
+                      if (!confirm('Are you sure you want to clean duplicate lessons? This action cannot be undone.')) return
                       try {
                         setLoading(true)
                         setMessage(null)
                         const result = await cleanupDuplicates('lessons')
-                        showMessage('success', `Grammar lessons cleaned: ${result.deleted} duplicates removed, ${result.uniqueItems} unique items kept`)
+                        showMessage('success', `Lessons cleaned: ${result.deleted} duplicates removed, ${result.uniqueItems} unique items kept`)
                       } catch (error: any) {
                         showMessage('error', error.message || 'Failed to clean duplicates')
                       } finally {
@@ -765,7 +765,7 @@ export default function Admin() {
                     disabled={loading}
                     className="flex-1 bg-red-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {loading ? 'Cleaning...' : 'Clean Grammar Lessons'}
+                    {loading ? 'Cleaning...' : 'Clean Lessons'}
                   </button>
                   <button
                     onClick={async () => {
@@ -792,7 +792,7 @@ export default function Admin() {
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
                 <h3 className="font-semibold text-blue-900 mb-2">Quick Load Seed Data</h3>
                 <p className="text-sm text-blue-700 mb-3">
-                  Load all seed data (grammar lessons, Terms, quizzes) from seed-data.json file
+                  Load all seed data (lessons, Terms, quizzes) from seed-data.json file
                 </p>
                 <button
                   onClick={async () => {
@@ -811,17 +811,17 @@ export default function Admin() {
                       let totalErrors = 0
                       const errors: string[] = []
                       
-                      // Upload Grammar Lessons
+                      // Upload Lessons
                       if (seedData.grammar_lessons && seedData.grammar_lessons.length > 0) {
                         try {
                           const result = await bulkUpload('lessons', seedData.grammar_lessons)
                           totalSuccess += result.results.success.length
                           totalErrors += result.results.errors.length
                           if (result.results.errors.length > 0) {
-                            errors.push(`Grammar Lessons: ${result.results.errors.length} errors`)
+                            errors.push(`Lessons: ${result.results.errors.length} errors`)
                           }
                         } catch (err: any) {
-                          errors.push(`Grammar Lessons: ${err.message}`)
+                          errors.push(`Lessons: ${err.message}`)
                         }
                       }
                       
@@ -839,7 +839,7 @@ export default function Admin() {
                         }
                       }
                       
-                      // Upload Grammar Quizzes
+                      // Upload Lesson Quizzes
                       if (seedData.grammar_quizzes && seedData.grammar_quizzes.length > 0) {
                         for (const quiz of seedData.grammar_quizzes) {
                           try {
@@ -847,7 +847,7 @@ export default function Admin() {
                             totalSuccess++
                           } catch (err: any) {
                             totalErrors++
-                            errors.push(`Grammar Quiz "${quiz.title}": ${err.message}`)
+                            errors.push(`Lesson Quiz "${quiz.title}": ${err.message}`)
                           }
                         }
                       }
@@ -919,15 +919,15 @@ export default function Admin() {
             </div>
           )}
 
-          {/* Grammar Quiz Form */}
-          {activeTab === 'grammar-quiz' && (
+          {/* Lesson Quiz Form */}
+          {activeTab === 'lesson-quiz' && (
             <div className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Select Lesson *</label>
                 <select
                   required
-                  value={grammarQuizForm.lessonId}
-                  onChange={(e) => setGrammarQuizForm({ ...grammarQuizForm, lessonId: e.target.value })}
+                  value={lessonQuizForm.lessonId}
+                  onChange={(e) => setLessonQuizForm({ ...lessonQuizForm, lessonId: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 >
                   <option value="">-- Select a lesson --</option>
@@ -944,8 +944,8 @@ export default function Admin() {
                 <input
                   type="text"
                   required
-                  value={grammarQuizForm.title}
-                  onChange={(e) => setGrammarQuizForm({ ...grammarQuizForm, title: e.target.value })}
+                  value={lessonQuizForm.title}
+                  onChange={(e) => setLessonQuizForm({ ...lessonQuizForm, title: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   placeholder="e.g., Present Simple Tense Quiz"
                 />
@@ -954,15 +954,15 @@ export default function Admin() {
               {/* Questions */}
               <div className="border-t pt-6">
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">Questions</h3>
-                {grammarQuizForm.questions.map((question, qIndex) => (
+                {lessonQuizForm.questions.map((question, qIndex) => (
                   <div key={qIndex} className="mb-6 p-4 bg-gray-50 rounded-lg border">
                     <div className="flex justify-between items-start mb-3">
                       <h4 className="font-semibold text-gray-700">Question {qIndex + 1}</h4>
                       <button
                         type="button"
                         onClick={() => {
-                          const newQuestions = grammarQuizForm.questions.filter((_, i) => i !== qIndex)
-                          setGrammarQuizForm({ ...grammarQuizForm, questions: newQuestions })
+                          const newQuestions = lessonQuizForm.questions.filter((_, i) => i !== qIndex)
+                          setLessonQuizForm({ ...lessonQuizForm, questions: newQuestions })
                         }}
                         className="text-red-600 hover:text-red-800"
                       >
@@ -975,9 +975,9 @@ export default function Admin() {
                         placeholder="Question text"
                         value={question.question}
                         onChange={(e) => {
-                          const newQuestions = [...grammarQuizForm.questions]
+                          const newQuestions = [...lessonQuizForm.questions]
                           newQuestions[qIndex].question = e.target.value
-                          setGrammarQuizForm({ ...grammarQuizForm, questions: newQuestions })
+                          setLessonQuizForm({ ...lessonQuizForm, questions: newQuestions })
                         }}
                         className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-primary-500"
                       />
@@ -989,9 +989,9 @@ export default function Admin() {
                               name={`correct-${qIndex}`}
                               checked={question.correctAnswer === oIndex}
                               onChange={() => {
-                                const newQuestions = [...grammarQuizForm.questions]
+                                const newQuestions = [...lessonQuizForm.questions]
                                 newQuestions[qIndex].correctAnswer = oIndex
-                                setGrammarQuizForm({ ...grammarQuizForm, questions: newQuestions })
+                                setLessonQuizForm({ ...lessonQuizForm, questions: newQuestions })
                               }}
                               className="w-4 h-4 text-primary-600"
                             />
@@ -1000,9 +1000,9 @@ export default function Admin() {
                               placeholder={`Option ${oIndex + 1}`}
                               value={option}
                               onChange={(e) => {
-                                const newQuestions = [...grammarQuizForm.questions]
+                                const newQuestions = [...lessonQuizForm.questions]
                                 newQuestions[qIndex].options[oIndex] = e.target.value
-                                setGrammarQuizForm({ ...grammarQuizForm, questions: newQuestions })
+                                setLessonQuizForm({ ...lessonQuizForm, questions: newQuestions })
                               }}
                               className="flex-1 px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-primary-500"
                             />
@@ -1014,9 +1014,9 @@ export default function Admin() {
                         placeholder="Explanation (optional)"
                         value={question.explanation}
                         onChange={(e) => {
-                          const newQuestions = [...grammarQuizForm.questions]
+                          const newQuestions = [...lessonQuizForm.questions]
                           newQuestions[qIndex].explanation = e.target.value
-                          setGrammarQuizForm({ ...grammarQuizForm, questions: newQuestions })
+                          setLessonQuizForm({ ...lessonQuizForm, questions: newQuestions })
                         }}
                         className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-primary-500"
                       />
@@ -1028,18 +1028,18 @@ export default function Admin() {
                     <input
                       type="text"
                       placeholder="Question text"
-                      value={newGrammarQuestion.question}
-                      onChange={(e) => setNewGrammarQuestion({ ...newGrammarQuestion, question: e.target.value })}
+                      value={newLessonQuestion.question}
+                      onChange={(e) => setNewLessonQuestion({ ...newLessonQuestion, question: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-primary-500"
                     />
                     <div className="space-y-2">
-                      {newGrammarQuestion.options.map((option, oIndex) => (
+                      {newLessonQuestion.options.map((option, oIndex) => (
                         <div key={oIndex} className="flex items-center gap-2">
                           <input
                             type="radio"
                             name="new-correct"
-                            checked={newGrammarQuestion.correctAnswer === oIndex}
-                            onChange={() => setNewGrammarQuestion({ ...newGrammarQuestion, correctAnswer: oIndex })}
+                            checked={newLessonQuestion.correctAnswer === oIndex}
+                            onChange={() => setNewLessonQuestion({ ...newLessonQuestion, correctAnswer: oIndex })}
                             className="w-4 h-4 text-primary-600"
                           />
                           <input
@@ -1047,9 +1047,9 @@ export default function Admin() {
                             placeholder={`Option ${oIndex + 1}`}
                             value={option}
                             onChange={(e) => {
-                              const newOptions = [...newGrammarQuestion.options]
+                              const newOptions = [...newLessonQuestion.options]
                               newOptions[oIndex] = e.target.value
-                              setNewGrammarQuestion({ ...newGrammarQuestion, options: newOptions })
+                              setNewLessonQuestion({ ...newLessonQuestion, options: newOptions })
                             }}
                             className="flex-1 px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-primary-500"
                           />
@@ -1059,22 +1059,22 @@ export default function Admin() {
                     <input
                       type="text"
                       placeholder="Explanation (optional)"
-                      value={newGrammarQuestion.explanation}
-                      onChange={(e) => setNewGrammarQuestion({ ...newGrammarQuestion, explanation: e.target.value })}
+                      value={newLessonQuestion.explanation}
+                      onChange={(e) => setNewLessonQuestion({ ...newLessonQuestion, explanation: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-primary-500"
                     />
                     <button
                       type="button"
                       onClick={() => {
-                        if (newGrammarQuestion.question && newGrammarQuestion.options.filter(o => o.trim()).length >= 2) {
-                          setGrammarQuizForm({
-                            ...grammarQuizForm,
-                            questions: [...grammarQuizForm.questions, {
-                              id: `q${grammarQuizForm.questions.length + 1}`,
-                              ...newGrammarQuestion
+                        if (newLessonQuestion.question && newLessonQuestion.options.filter(o => o.trim()).length >= 2) {
+                          setLessonQuizForm({
+                            ...lessonQuizForm,
+                            questions: [...lessonQuizForm.questions, {
+                              id: `q${lessonQuizForm.questions.length + 1}`,
+                              ...newLessonQuestion
                             }]
                           })
-                          setNewGrammarQuestion({ question: '', options: ['', '', '', ''], correctAnswer: 0, explanation: '' })
+                          setNewLessonQuestion({ question: '', options: ['', '', '', ''], correctAnswer: 0, explanation: '' })
                         }
                       }}
                       className="text-primary-600 hover:text-primary-800 text-sm font-medium"
@@ -1087,19 +1087,19 @@ export default function Admin() {
 
               <button
                 onClick={async () => {
-                  if (!grammarQuizForm.lessonId || !grammarQuizForm.title || grammarQuizForm.questions.length === 0) {
+                  if (!lessonQuizForm.lessonId || !lessonQuizForm.title || lessonQuizForm.questions.length === 0) {
                     showMessage('error', 'Please fill in all required fields and add at least one question')
                     return
                   }
                   setLoading(true)
                   setMessage(null)
                   try {
-                    await createGrammarQuiz(grammarQuizForm)
-                    showMessage('success', 'Grammar quiz created successfully!')
-                    setGrammarQuizForm({ lessonId: '', title: '', questions: [] })
-                    setNewGrammarQuestion({ question: '', options: ['', '', '', ''], correctAnswer: 0, explanation: '' })
+                    await createLessonQuiz(lessonQuizForm)
+                    showMessage('success', 'Lesson quiz created successfully!')
+                    setLessonQuizForm({ lessonId: '', title: '', questions: [] })
+                    setNewLessonQuestion({ question: '', options: ['', '', '', ''], correctAnswer: 0, explanation: '' })
                   } catch (error: any) {
-                    showMessage('error', error.message || 'Failed to create grammar quiz')
+                    showMessage('error', error.message || 'Failed to create lesson quiz')
                   } finally {
                     setLoading(false)
                   }
@@ -1107,7 +1107,7 @@ export default function Admin() {
                 disabled={loading}
                 className="w-full bg-primary-600 text-white py-3 rounded-lg font-semibold hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? 'Creating...' : 'Create Grammar Quiz'}
+                {loading ? 'Creating...' : 'Create Lesson Quiz'}
               </button>
             </div>
           )}
@@ -1121,7 +1121,7 @@ export default function Admin() {
                   type="text"
                   required
                   value={termsQuizForm.title}
-                  onChange={(e) => settermsQuizForm({ ...termsQuizForm, title: e.target.value })}
+                  onChange={(e) => setTermsQuizForm({ ...termsQuizForm, title: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   placeholder="e.g., Beginner Terms Quiz"
                 />
@@ -1132,7 +1132,7 @@ export default function Admin() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">Level</label>
                   <select
                     value={termsQuizForm.level}
-                    onChange={(e) => settermsQuizForm({ ...termsQuizForm, level: e.target.value })}
+                        onChange={(e) => setTermsQuizForm({ ...termsQuizForm, level: e.target.value })}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   >
                     <option value="beginner">Beginner</option>
@@ -1145,7 +1145,7 @@ export default function Admin() {
                   <input
                     type="text"
                     value={termsQuizForm.category}
-                    onChange={(e) => settermsQuizForm({ ...termsQuizForm, category: e.target.value })}
+                    onChange={(e) => setTermsQuizForm({ ...termsQuizForm, category: e.target.value })}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     placeholder="e.g., general, food"
                   />
@@ -1330,7 +1330,7 @@ export default function Admin() {
                       type="button"
                       onClick={() => {
                         if (newTermsQuestion.definition && newTermsQuestion.options.filter(o => o.trim()).length >= 2) {
-                          settermsQuizForm({
+                          setTermsQuizForm({
                             ...termsQuizForm,
                             questions: [...termsQuizForm.questions, {
                               id: `q${termsQuizForm.questions.length + 1}`,
@@ -1359,7 +1359,7 @@ export default function Admin() {
                   try {
                     await createTermsQuiz(termsQuizForm)
                     showMessage('success', 'Terms Quiz created successfully!')
-                    settermsQuizForm({ title: '', level: 'beginner', category: 'general', questions: [] })
+                    setTermsQuizForm({ title: '', level: 'beginner', category: 'general', questions: [] })
                     setNewTermsQuestion({ type: 'definition', term: '', definition: '', options: ['', '', '', ''], correctAnswer: 0, example: '', explanation: '' })
                   } catch (error: any) {
                     showMessage('error', error.message || 'Failed to create Terms Quiz')
@@ -1869,20 +1869,20 @@ export default function Admin() {
                     <label className="relative inline-flex items-center cursor-pointer">
                       <input
                         type="checkbox"
-                        checked={appConfig.features.Terms}
-                        onChange={(e) => setAppConfig({ ...appConfig, features: { ...appConfig.features, Terms: e.target.checked } })}
+                        checked={appConfig.features.terms}
+                        onChange={(e) => setAppConfig({ ...appConfig, features: { ...appConfig.features, terms: e.target.checked } })}
                         className="sr-only peer"
                       />
                       <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
                     </label>
                   </div>
 
-                  {appConfig.features.Terms && (
+                  {appConfig.features.terms && (
                     <div className="ml-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
                       <label className="block text-sm font-medium text-gray-700 mb-2">Terms Type</label>
                       <select
-                        value={appConfig.TermsType || 'formulas'}
-                        onChange={(e) => setAppConfig({ ...appConfig, TermsType: e.target.value as 'formulas' | 'memorizing' })}
+                        value={appConfig.termsType || 'formulas'}
+                        onChange={(e) => setAppConfig({ ...appConfig, termsType: e.target.value as 'formulas' | 'memorizing' })}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                       >
                         <option value="formulas">Formulas</option>
@@ -1968,8 +1968,8 @@ export default function Admin() {
                           }]
                         }
 
-                        if (appConfig.features.Terms) {
-                          if (appConfig.TermsType === 'formulas') {
+                        if (appConfig.features.terms) {
+                          if (appConfig.termsType === 'formulas') {
                             template.formulas = [{
                               title: "Example Formula",
                               description: "Formula description",
@@ -2021,7 +2021,7 @@ export default function Admin() {
                   <p className="text-sm text-gray-600 mb-2">Current Settings:</p>
                   <ul className="text-sm text-gray-700 space-y-1">
                     <li>• Lessons: {appConfig.features.lessons ? 'Enabled' : 'Disabled'}</li>
-                    <li>• Terms/Formulas: {appConfig.features.Terms ? `Enabled (${appConfig.TermsType})` : 'Disabled'}</li>
+                    <li>• Terms/Formulas: {appConfig.features.terms ? `Enabled (${appConfig.termsType})` : 'Disabled'}</li>
                     <li>• Quizzes: {appConfig.features.quizzes ? 'Enabled' : 'Disabled'}</li>
                   </ul>
                 </div>

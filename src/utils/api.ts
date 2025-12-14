@@ -204,6 +204,26 @@ export async function batchTranslate(text: string, targetLanguage: string = 'tr'
  * Admin API functions
  */
 
+export async function createLesson(lesson: any): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/admin/lessons`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(lesson),
+  })
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw new Error(`Failed to create lesson: ${errorText}`)
+  }
+
+  return response.json()
+}
+
+// Backward compatibility alias
+export const createGrammarLesson = createLesson
+
 export async function createTerm(term: any): Promise<any> {
   const response = await fetch(`${API_BASE_URL}/admin/terms`, {
     method: 'POST',
