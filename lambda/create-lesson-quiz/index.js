@@ -78,17 +78,17 @@ exports.handler = async (event) => {
       statusCode: 201,
       headers,
       body: JSON.stringify({
-        message: 'Grammar quiz created successfully',
+        message: 'Lesson quiz created successfully',
         quiz
       })
     };
   } catch (error) {
-    console.error('Error creating grammar quiz:', error);
+    console.error('Error creating lesson quiz:', error);
     return {
       statusCode: 500,
       headers,
       body: JSON.stringify({
-        error: 'Failed to create grammar quiz',
+        error: 'Failed to create lesson quiz',
         message: error.message
       })
     };

@@ -1,11 +1,11 @@
 import { useState, useMemo, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import ClickableText from '../components/ClickableText'
-import { getVocabularyWords } from '../utils/api'
+import { getTerms } from '../utils/api'
 
-interface VocabularyWord {
-  wordId: string
-  word: string
+interface Term {
+  termId: string
+  term: string
   definition: string
   example: string
   level: string
@@ -13,29 +13,29 @@ interface VocabularyWord {
   category?: string
 }
 
-export default function VocabularyList() {
-  const [words, setWords] = useState<VocabularyWord[]>([])
+export default function TermsList() {
+  const [terms, setTerms] = useState<Term[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
 
   useEffect(() => {
-    const fetchWords = async () => {
+    const fetchTerms = async () => {
       try {
         setLoading(true)
-        const data = await getVocabularyWords()
-        if (data && data.words) {
-          setWords(data.words)
+        const data = await getTerms()
+        if (data && data.terms) {
+          setTerms(data.terms)
         }
       } catch (err: any) {
-        console.error('Failed to fetch words:', err)
-        setError(err.message || 'Failed to load words')
+        console.error('Failed to fetch terms:', err)
+        setError(err.message || 'Failed to load terms')
       } finally {
         setLoading(false)
       }
     }
 
-    fetchWords()
+    fetchTerms()
   }, [])
 
   if (loading) {
@@ -43,7 +43,7 @@ export default function VocabularyList() {
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading words...</p>
+          <p className="text-gray-600">Loading terms...</p>
         </div>
       </div>
     )
@@ -64,53 +64,50 @@ export default function VocabularyList() {
   }
   const [selectedLevel, setSelectedLevel] = useState<string>('All')
   const [currentPage, setCurrentPage] = useState(1)
-  const wordsPerPage = 10
+  const termsPerPage = 10
 
-  const filteredWords = useMemo(() => {
-    return words.filter((word) => {
-      const matchesSearch = word.word.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           word.definition.toLowerCase().includes(searchTerm.toLowerCase())
-      const wordLevel = word.level === 'beginner' ? 'Beginner' : word.level === 'intermediate' ? 'Intermediate' : 'Advanced'
-      const matchesLevel = selectedLevel === 'All' || wordLevel === selectedLevel
+  const filteredTerms = useMemo(() => {
+    return terms.filter((term) => {
+      const matchesSearch = term.term.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           term.definition.toLowerCase().includes(searchTerm.toLowerCase())
+      const termLevel = term.level === 'beginner' ? 'Beginner' : term.level === 'intermediate' ? 'Intermediate' : 'Advanced'
+      const matchesLevel = selectedLevel === 'All' || termLevel === selectedLevel
       return matchesSearch && matchesLevel
     })
-  }, [words, searchTerm, selectedLevel])
+  }, [terms, searchTerm, selectedLevel])
 
-  const wordsWithId = filteredWords.map(word => ({
-    id: word.wordId,
-    word: word.word,
-    definition: word.definition,
-    example: word.example,
-    level: word.level === 'beginner' ? 'Beginner' : word.level === 'intermediate' ? 'Intermediate' : 'Advanced',
+  const termsWithId = filteredTerms.map(term => ({
+    id: term.termId,
+    term: term.term,
+    definition: term.definition,
+    example: term.example,
+    level: term.level === 'beginner' ? 'Beginner' : term.level === 'intermediate' ? 'Intermediate' : 'Advanced',
   }))
 
-  const totalPages = Math.ceil(wordsWithId.length / wordsPerPage)
-  const paginatedWords = wordsWithId.slice(
-    (currentPage - 1) * wordsPerPage,
-    currentPage * wordsPerPage
+  const totalPages = Math.ceil(termsWithId.length / termsPerPage)
+  const paginatedTerms = termsWithId.slice(
+    (currentPage - 1) * termsPerPage,
+    currentPage * termsPerPage
   )
-
-  // Batch translation disabled temporarily to fix infinite loop issue
-  // Will be re-enabled after fixing the useBatchTranslate hook
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <Link
-          to="/vocabulary"
+          to="/terms"
           className="flex items-center text-gray-600 hover:text-primary-600 transition-colors"
         >
           <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
-          Back to Vocabulary
+          Back to Terms
         </Link>
       </div>
 
       <div>
-        <h1 className="text-4xl font-bold text-gray-900 mb-4">Word List</h1>
+        <h1 className="text-4xl font-bold text-gray-900 mb-4">Terms List</h1>
         <p className="text-lg text-gray-600 mb-6">
-          Browse and study English words with definitions and examples
+          Browse and study terms with definitions and examples
         </p>
       </div>
 
@@ -120,7 +117,7 @@ export default function VocabularyList() {
           <div className="flex-1">
             <input
               type="text"
-              placeholder="Search words or definitions..."
+              placeholder="Search terms or definitions..."
               value={searchTerm}
               onChange={(e) => {
                 setSearchTerm(e.target.value)
@@ -146,37 +143,37 @@ export default function VocabularyList() {
           </div>
         </div>
         <div className="text-sm text-gray-600">
-          Showing {wordsWithId.length} word{wordsWithId.length !== 1 ? 's' : ''}
+          Showing {termsWithId.length} term{termsWithId.length !== 1 ? 's' : ''}
         </div>
       </div>
 
-      {/* Word Cards */}
+      {/* Term Cards */}
       <div className="space-y-4">
-        {paginatedWords.length > 0 ? (
-          paginatedWords.map((word) => (
+        {paginatedTerms.length > 0 ? (
+          paginatedTerms.map((term) => (
             <div
-              key={word.id}
+              key={term.id}
               className="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow border border-gray-100"
             >
               <div className="flex items-start justify-between mb-3">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
-                    <h3 className="text-2xl font-bold text-gray-900">{word.word}</h3>
+                    <h3 className="text-2xl font-bold text-gray-900">{term.term}</h3>
                     <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                      word.level === 'Beginner'
+                      term.level === 'Beginner'
                         ? 'bg-green-100 text-green-700'
-                        : word.level === 'Intermediate'
+                        : term.level === 'Intermediate'
                         ? 'bg-yellow-100 text-yellow-700'
                         : 'bg-red-100 text-red-700'
                     }`}>
-                      {word.level}
+                      {term.level}
                     </span>
                   </div>
-                  <p className="text-gray-700 mb-3">{word.definition}</p>
+                  <p className="text-gray-700 mb-3">{term.definition}</p>
                   <div className="bg-primary-50 rounded-lg p-3 border-l-4 border-primary-500">
                     <p className="text-gray-600 italic">
                       <span className="font-semibold">Example: </span>
-                      <ClickableText text={word.example} />
+                      <ClickableText text={term.example} />
                     </p>
                   </div>
                 </div>
@@ -185,7 +182,7 @@ export default function VocabularyList() {
           ))
         ) : (
           <div className="bg-white rounded-xl shadow-md p-12 text-center">
-            <p className="text-gray-600 text-lg">No words found matching your search criteria.</p>
+            <p className="text-gray-600 text-lg">No terms found matching your search criteria.</p>
           </div>
         )}
       </div>
@@ -215,4 +212,3 @@ export default function VocabularyList() {
     </div>
   )
 }
-

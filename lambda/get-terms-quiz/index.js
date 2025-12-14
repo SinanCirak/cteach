@@ -1,7 +1,7 @@
 const AWS = require('aws-sdk');
 const dynamodb = new AWS.DynamoDB.DocumentClient();
 
-const VOCABULARY_QUIZZES_TABLE = process.env.VOCABULARY_QUIZZES_TABLE || 'vocabulary_quizzes';
+const TERMS_QUIZZES_TABLE = process.env.TERMS_QUIZZES_TABLE || 'terms_quizzes';
 
 exports.handler = async (event) => {
   try {
@@ -15,7 +15,7 @@ exports.handler = async (event) => {
     if (quizId) {
       // Get specific quiz by ID
       params = {
-        TableName: VOCABULARY_QUIZZES_TABLE,
+        TableName: TERMS_QUIZZES_TABLE,
         Key: {
           quizId: quizId,
         },
@@ -49,7 +49,7 @@ exports.handler = async (event) => {
     } else {
       // List quizzes with optional filters
       params = {
-        TableName: VOCABULARY_QUIZZES_TABLE,
+        TableName: TERMS_QUIZZES_TABLE,
       };
 
       if (level || category) {
@@ -89,7 +89,7 @@ exports.handler = async (event) => {
       };
     }
   } catch (error) {
-    console.error('Error fetching vocabulary quiz:', error);
+    console.error('Error fetching terms quiz:', error);
     return {
       statusCode: 500,
       headers: {
@@ -97,7 +97,7 @@ exports.handler = async (event) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        error: 'Failed to fetch vocabulary quiz',
+        error: 'Failed to fetch terms quiz',
         message: error.message,
       }),
     };

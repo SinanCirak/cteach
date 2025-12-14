@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom'
 import { useState, useEffect, useMemo } from 'react'
-import { getGrammarLessons } from '../utils/api'
+import { getLessons } from '../utils/api'
 
-interface GrammarLesson {
+interface Lesson {
   lessonId: string
   title: string
   subtitle?: string
@@ -12,8 +12,8 @@ interface GrammarLesson {
 
 type LevelFilter = 'all' | 'beginner' | 'elementary' | 'intermediate' | 'upper-intermediate' | 'advanced'
 
-export default function Grammar() {
-  const [lessons, setLessons] = useState<GrammarLesson[]>([])
+export default function Lessons() {
+  const [lessons, setLessons] = useState<Lesson[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedLevel, setSelectedLevel] = useState<LevelFilter>('all')
@@ -22,10 +22,10 @@ export default function Grammar() {
     const fetchLessons = async () => {
       try {
         setLoading(true)
-        const data = await getGrammarLessons()
+        const data = await getLessons()
         if (data && data.lessons) {
           // Remove duplicates based on lessonId
-          const uniqueLessons = data.lessons.reduce((acc: GrammarLesson[], lesson: GrammarLesson) => {
+              const uniqueLessons = data.lessons.reduce((acc: Lesson[], lesson: Lesson) => {
             if (!acc.find(l => l.lessonId === lesson.lessonId)) {
               acc.push(lesson)
             }
@@ -33,7 +33,7 @@ export default function Grammar() {
           }, [])
           
           // Sort by order
-          const sortedLessons = uniqueLessons.sort((a: GrammarLesson, b: GrammarLesson) => 
+          const sortedLessons = uniqueLessons.sort((a: Lesson, b: Lesson) => 
             (a.order || 0) - (b.order || 0)
           )
           setLessons(sortedLessons)
@@ -62,7 +62,7 @@ export default function Grammar() {
       : lessons.filter(lesson => lesson.level.toLowerCase() === selectedLevel.toLowerCase())
 
     // Group by level
-    const grouped: Record<string, GrammarLesson[]> = {
+    const grouped: Record<string, Lesson[]> = {
       beginner: [],
       elementary: [],
       intermediate: [],
@@ -127,7 +127,7 @@ export default function Grammar() {
       <div className="text-center py-12">
         <h2 className="text-2xl font-bold text-gray-900 mb-4">No lessons found</h2>
         <p className="text-gray-600 mb-4">
-          Please upload grammar lessons from the admin panel.
+          Please upload lessons from the admin panel.
         </p>
         <Link
           to="/admin"
@@ -153,9 +153,9 @@ export default function Grammar() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-4xl font-bold text-gray-900 mb-4">Grammar Lessons</h1>
+        <h1 className="text-4xl font-bold text-gray-900 mb-4">Lessons</h1>
         <p className="text-lg text-gray-600">
-          Master English grammar step by step with interactive lessons and quizzes
+          Learn step by step with interactive lessons and quizzes
         </p>
       </div>
 
@@ -199,7 +199,7 @@ export default function Grammar() {
                 {filteredAndGroupedLessons.beginner.map((lesson) => (
                   <Link
                     key={lesson.lessonId}
-                    to={`/grammar/${lesson.lessonId}`}
+                    to={`/lessons/${lesson.lessonId}`}
                     className="group bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden border border-gray-100"
                   >
                     <div className="p-6">
@@ -250,7 +250,7 @@ export default function Grammar() {
                 {filteredAndGroupedLessons.elementary.map((lesson) => (
                   <Link
                     key={lesson.lessonId}
-                    to={`/grammar/${lesson.lessonId}`}
+                    to={`/lessons/${lesson.lessonId}`}
                     className="group bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden border border-gray-100"
                   >
                     <div className="p-6">
@@ -301,7 +301,7 @@ export default function Grammar() {
                 {filteredAndGroupedLessons.intermediate.map((lesson) => (
                   <Link
                     key={lesson.lessonId}
-                    to={`/grammar/${lesson.lessonId}`}
+                    to={`/lessons/${lesson.lessonId}`}
                     className="group bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden border border-gray-100"
                   >
                     <div className="p-6">
@@ -352,7 +352,7 @@ export default function Grammar() {
                 {filteredAndGroupedLessons['upper-intermediate'].map((lesson) => (
                   <Link
                     key={lesson.lessonId}
-                    to={`/grammar/${lesson.lessonId}`}
+                    to={`/lessons/${lesson.lessonId}`}
                     className="group bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden border border-gray-100"
                   >
                     <div className="p-6">
@@ -403,7 +403,7 @@ export default function Grammar() {
                 {filteredAndGroupedLessons.advanced.map((lesson) => (
                   <Link
                     key={lesson.lessonId}
-                    to={`/grammar/${lesson.lessonId}`}
+                    to={`/lessons/${lesson.lessonId}`}
                     className="group bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden border border-gray-100"
                   >
                     <div className="p-6">

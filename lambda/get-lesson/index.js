@@ -53,7 +53,7 @@ exports.handler = async (event) => {
       body: JSON.stringify(result.Item),
     };
   } catch (error) {
-    console.error('Error fetching grammar lesson:', error);
+    console.error('Error fetching lesson:', error);
     return {
       statusCode: 500,
       headers: {
@@ -61,7 +61,7 @@ exports.handler = async (event) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        error: 'Failed to fetch grammar lesson',
+        error: 'Failed to fetch lesson',
         message: error.message,
       }),
     };

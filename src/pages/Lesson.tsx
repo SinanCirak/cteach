@@ -1,7 +1,7 @@
 import { useParams, Link } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import ClickableText from '../components/ClickableText'
-import { getGrammarLesson } from '../utils/api'
+import { getLesson } from '../utils/api'
 
 interface Lesson {
   lessonId: string
@@ -15,7 +15,7 @@ interface Lesson {
   [key: string]: any // Allow any additional fields like pronouns, forms, etc.
 }
 
-export default function GrammarLesson() {
+export default function Lesson() {
   const { lessonId } = useParams<{ lessonId: string }>()
   const [lesson, setLesson] = useState<Lesson | null>(null)
   const [loading, setLoading] = useState(true)
@@ -27,7 +27,7 @@ export default function GrammarLesson() {
       
       try {
         setLoading(true)
-        const data = await getGrammarLesson(lessonId)
+        const data = await getLesson(lessonId)
         console.log('Fetched lesson data:', data)
         
         // Ensure all required fields have default values
@@ -81,8 +81,8 @@ export default function GrammarLesson() {
     return (
       <div className="text-center py-12">
         <h2 className="text-2xl font-bold text-gray-900 mb-4">{error || 'Lesson not found'}</h2>
-        <Link to="/grammar" className="text-primary-600 hover:underline">
-          Back to Grammar Lessons
+        <Link to="/lessons" className="text-primary-600 hover:underline">
+          Back to Lessons
         </Link>
       </div>
     )
@@ -96,8 +96,8 @@ export default function GrammarLesson() {
     return (
       <div className="text-center py-12">
         <h2 className="text-2xl font-bold text-gray-900 mb-4">Lesson not found</h2>
-        <Link to="/grammar" className="text-primary-600 hover:underline">
-          Back to Grammar Lessons
+        <Link to="/lessons" className="text-primary-600 hover:underline">
+          Back to Lessons
         </Link>
       </div>
     )
@@ -107,7 +107,7 @@ export default function GrammarLesson() {
     <div className="max-w-5xl mx-auto space-y-4 sm:space-y-6 md:space-y-8">
       {/* Back Button */}
       <Link
-        to="/grammar"
+        to="/lessons"
         className="inline-flex items-center text-sm sm:text-base text-gray-600 hover:text-primary-600 transition-colors group"
       >
         <svg className="w-4 h-4 sm:w-5 sm:h-5 mr-2 group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -398,24 +398,26 @@ export default function GrammarLesson() {
         </div>
       )}
 
-      {/* CTA Section */}
-      <div className="bg-gradient-to-r from-primary-600 to-primary-700 rounded-lg sm:rounded-xl shadow-lg p-4 sm:p-6 md:p-8 text-white">
-        <div className="flex flex-col md:flex-row items-center justify-between">
-          <div className="mb-4 md:mb-0 text-center md:text-left">
-            <h3 className="text-xl sm:text-2xl font-bold mb-2">Ready to test your knowledge?</h3>
-            <p className="text-sm sm:text-base text-primary-100">Take the quiz to see how well you understand this lesson</p>
+      {/* CTA Section - Show quiz link only if quizzes are enabled */}
+      {config?.features.quizzes && (
+        <div className="bg-gradient-to-r from-primary-600 to-primary-700 rounded-lg sm:rounded-xl shadow-lg p-4 sm:p-6 md:p-8 text-white">
+          <div className="flex flex-col md:flex-row items-center justify-between">
+            <div className="mb-4 md:mb-0 text-center md:text-left">
+              <h3 className="text-xl sm:text-2xl font-bold mb-2">Ready to test your knowledge?</h3>
+              <p className="text-sm sm:text-base text-primary-100">Take the quiz to see how well you understand this lesson</p>
+            </div>
+            <Link
+              to={`/lessons/${lessonId}/quiz`}
+              className="px-6 sm:px-8 py-3 sm:py-4 bg-white text-primary-600 rounded-lg font-bold hover:bg-primary-50 transition-colors shadow-lg hover:shadow-xl flex items-center justify-center group whitespace-nowrap w-full md:w-auto"
+            >
+              Take Quiz
+              <svg className="w-4 h-4 sm:w-5 sm:h-5 ml-2 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </Link>
           </div>
-          <Link
-            to={`/grammar/${lessonId}/quiz`}
-            className="px-6 sm:px-8 py-3 sm:py-4 bg-white text-primary-600 rounded-lg font-bold hover:bg-primary-50 transition-colors shadow-lg hover:shadow-xl flex items-center justify-center group whitespace-nowrap w-full md:w-auto"
-          >
-            Take Quiz
-            <svg className="w-4 h-4 sm:w-5 sm:h-5 ml-2 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </Link>
         </div>
-      </div>
+      )}
     </div>
   )
 }

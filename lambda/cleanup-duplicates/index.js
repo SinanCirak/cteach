@@ -2,7 +2,7 @@ const AWS = require('aws-sdk');
 const dynamodb = new AWS.DynamoDB.DocumentClient();
 
 const GRAMMAR_LESSONS_TABLE = process.env.GRAMMAR_LESSONS_TABLE || 'grammar_lessons';
-const VOCABULARY_WORDS_TABLE = process.env.VOCABULARY_WORDS_TABLE || 'vocabulary_words';
+const TERMS_TABLE = process.env.TERMS_TABLE || 'terms';
 
 exports.handler = async (event) => {
   const headers = {
@@ -20,17 +20,17 @@ exports.handler = async (event) => {
     const body = JSON.parse(event.body || '{}');
     const { table } = body; // 'grammar_lessons' or 'vocabulary_words'
 
-    if (!table || (table !== 'grammar_lessons' && table !== 'vocabulary_words')) {
+    if (!table || (table !== 'lessons' && table !== 'terms')) {
       return {
         statusCode: 400,
         headers,
-        body: JSON.stringify({ error: 'Invalid table name. Must be "grammar_lessons" or "vocabulary_words"' })
+        body: JSON.stringify({ error: 'Invalid table name. Must be "lessons" or "terms"' })
       };
     }
 
-    const tableName = table === 'grammar_lessons' ? GRAMMAR_LESSONS_TABLE : VOCABULARY_WORDS_TABLE;
-    const keyField = table === 'grammar_lessons' ? 'lessonId' : 'wordId';
-    const uniqueField = table === 'grammar_lessons' ? 'title' : 'word';
+    const tableName = table === 'lessons' ? GRAMMAR_LESSONS_TABLE : TERMS_TABLE;
+    const keyField = table === 'lessons' ? 'lessonId' : 'termId';
+    const uniqueField = table === 'lessons' ? 'title' : 'term';
 
     // Scan all items
     const scanParams = {

@@ -13,13 +13,13 @@ variable "environment" {
 variable "bucket_name" {
   description = "S3 bucket name for static website"
   type        = string
-  default     = "tilgo-website"
+  default     = "cteach-website"
 }
 
 variable "domain_name" {
   description = "Domain name for the website"
   type        = string
-  default     = "tilgo.cirak.ca"
+  default     = "cteach.cirak.ca"
 }
 
 variable "root_domain" {

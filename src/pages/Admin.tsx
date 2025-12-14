@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
-import { createGrammarLesson, createVocabularyWord, bulkUpload, createGrammarQuiz, createVocabularyQuiz, getGrammarLessons, cleanupDuplicates, getLevels, createLevel, updateLevel, deleteLevel, getCategories, createCategory, updateCategory, deleteCategory, getImageUploadUrl, type Level, type Category } from '../utils/api'
+import { createLesson, createTerm, bulkUpload, createLessonQuiz, createTermsQuiz, getLessons, cleanupDuplicates, getLevels, createLevel, updateLevel, deleteLevel, getCategories, createCategory, updateCategory, deleteCategory, getImageUploadUrl, getAppConfig, updateAppConfig, type Level, type Category, type AppConfig } from '../utils/api'
 
-type TabType = 'grammar' | 'vocabulary' | 'bulk' | 'grammar-quiz' | 'vocabulary-quiz' | 'levels' | 'categories' | 'images'
+type TabType = 'grammar' | 'terms' | 'bulk' | 'grammar-quiz' | 'terms-quiz' | 'levels' | 'categories' | 'images' | 'settings' | 'template'
 
 export default function Admin() {
   const [activeTab, setActiveTab] = useState<TabType>('grammar')
@@ -26,9 +26,9 @@ export default function Admin() {
   const [newExample, setNewExample] = useState({ sentence: '', explanation: '' })
   const [newTip, setNewTip] = useState('')
 
-  // Vocabulary word form
-  const [vocabularyForm, setVocabularyForm] = useState({
-    word: '',
+  // Terms form
+  const [termsForm, setTermsForm] = useState({
+    term: '',
     definition: '',
     example: '',
     partOfSpeech: 'noun',
@@ -38,7 +38,7 @@ export default function Admin() {
 
   // Bulk upload
   const [bulkData, setBulkData] = useState('')
-  const [bulkType, setBulkType] = useState<'grammar_lessons' | 'vocabulary_words'>('grammar_lessons')
+  const [bulkType, setBulkType] = useState<'lessons' | 'terms'>('lessons')
 
   // Grammar quiz form
   const [grammarQuizForm, setGrammarQuizForm] = useState({
@@ -47,17 +47,17 @@ export default function Admin() {
     questions: [] as Array<{ id: string; question: string; options: string[]; correctAnswer: number; explanation: string }>,
   })
 
-  // Vocabulary quiz form
-  const [vocabularyQuizForm, setVocabularyQuizForm] = useState({
+  // Terms quiz form
+  const [termsQuizForm, setTermsQuizForm] = useState({
     title: '',
     level: 'beginner',
     category: 'general',
-    questions: [] as Array<{ id: string; type: string; word: string; definition: string; options: string[]; correctAnswer: number; example: string; explanation: string }>,
+    questions: [] as Array<{ id: string; type: string; term: string; definition: string; options: string[]; correctAnswer: number; example: string; explanation: string }>,
   })
 
   // Form state for dynamic quiz questions
   const [newGrammarQuestion, setNewGrammarQuestion] = useState({ question: '', options: ['', '', '', ''], correctAnswer: 0, explanation: '' })
-  const [newVocabularyQuestion, setNewVocabularyQuestion] = useState({ type: 'definition', word: '', definition: '', options: ['', '', '', ''], correctAnswer: 0, example: '', explanation: '' })
+  const [newTermsQuestion, setNewTermsQuestion] = useState({ type: 'definition', term: '', definition: '', options: ['', '', '', ''], correctAnswer: 0, example: '', explanation: '' })
 
   // Available lessons for quiz
   const [availableLessons, setAvailableLessons] = useState<Array<{ lessonId: string; title: string }>>([])
@@ -76,10 +76,16 @@ export default function Admin() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null)
 
+  // App configuration
+  const [appConfig, setAppConfig] = useState<AppConfig>({
+    features: { lessons: true, terms: false, quizzes: true },
+    termsType: 'formulas'
+  })
+
   useEffect(() => {
     // Load available grammar lessons (only when grammar-quiz tab is active)
     if (activeTab === 'grammar-quiz') {
-      getGrammarLessons()
+      getLessons()
         .then((data: any) => {
           if (data && data.lessons) {
             setAvailableLessons(data.lessons.map((l: any) => ({ lessonId: l.lessonId, title: l.title })))
@@ -116,6 +122,19 @@ export default function Admin() {
           console.error('Failed to load categories:', err)
         })
     }
+    
+    // Load app config when settings tab is active
+    if (activeTab === 'settings') {
+      getAppConfig()
+        .then((data) => {
+          if (data && data.config) {
+            setAppConfig(data.config)
+          }
+        })
+        .catch((err) => {
+          console.error('Failed to load app config:', err)
+        })
+    }
   }, [activeTab])
 
   const showMessage = (type: 'success' | 'error', text: string) => {
@@ -133,7 +152,7 @@ export default function Admin() {
         ...grammarForm,
         content: grammarForm.content.split('\n').filter(line => line.trim()),
       }
-      await createGrammarLesson(lesson)
+      await createLesson(lesson)
       showMessage('success', 'Grammar lesson created successfully!')
       setGrammarForm({
         title: '',
@@ -156,16 +175,16 @@ export default function Admin() {
     }
   }
 
-  const handleVocabularySubmit = async (e: React.FormEvent) => {
+  const handleTermsSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setMessage(null)
 
     try {
-      await createVocabularyWord(vocabularyForm)
-      showMessage('success', 'Vocabulary word created successfully!')
-      setVocabularyForm({
-        word: '',
+      await createTerm(termsForm)
+      showMessage('success', 'Term created successfully!')
+      setTermsForm({
+        term: '',
         definition: '',
         example: '',
         partOfSpeech: 'noun',
@@ -173,7 +192,7 @@ export default function Admin() {
         category: 'general',
       })
     } catch (error: any) {
-      showMessage('error', error.message || 'Failed to create vocabulary word')
+      showMessage('error', error.message || 'Failed to create Term')
     } finally {
       setLoading(false)
     }
@@ -227,14 +246,14 @@ export default function Admin() {
               Grammar Lesson
             </button>
             <button
-              onClick={() => setActiveTab('vocabulary')}
+              onClick={() => setActiveTab('terms')}
               className={`px-6 py-3 font-semibold transition-colors ${
-                activeTab === 'vocabulary'
+                activeTab === 'terms'
                   ? 'text-primary-600 border-b-2 border-primary-600'
                   : 'text-gray-500 hover:text-gray-700'
               }`}
             >
-              Vocabulary Word
+              Term
             </button>
             <button
               onClick={() => setActiveTab('bulk')}
@@ -257,14 +276,14 @@ export default function Admin() {
               Grammar Quiz
             </button>
             <button
-              onClick={() => setActiveTab('vocabulary-quiz')}
+              onClick={() => setActiveTab('terms-quiz')}
               className={`px-6 py-3 font-semibold transition-colors ${
-                activeTab === 'vocabulary-quiz'
+                activeTab === 'terms-quiz'
                   ? 'text-primary-600 border-b-2 border-primary-600'
                   : 'text-gray-500 hover:text-gray-700'
               }`}
             >
-              Vocabulary Quiz
+              Terms Quiz
             </button>
             <button
               onClick={() => setActiveTab('levels')}
@@ -295,6 +314,26 @@ export default function Admin() {
               }`}
             >
               Images
+            </button>
+            <button
+              onClick={() => setActiveTab('settings')}
+              className={`px-6 py-3 font-semibold transition-colors ${
+                activeTab === 'settings'
+                  ? 'text-primary-600 border-b-2 border-primary-600'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              Settings
+            </button>
+            <button
+              onClick={() => setActiveTab('template')}
+              className={`px-6 py-3 font-semibold transition-colors ${
+                activeTab === 'template'
+                  ? 'text-primary-600 border-b-2 border-primary-600'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              JSON Template
             </button>
           </div>
 
@@ -614,16 +653,16 @@ export default function Admin() {
             </form>
           )}
 
-          {/* Vocabulary Word Form */}
-          {activeTab === 'vocabulary' && (
-            <form onSubmit={handleVocabularySubmit} className="space-y-6">
+          {/* Term Form */}
+          {activeTab === 'Terms' && (
+            <form onSubmit={handleTermsSubmit} className="space-y-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Word *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Term *</label>
                 <input
                   type="text"
                   required
-                  value={vocabularyForm.word}
-                  onChange={(e) => setVocabularyForm({ ...vocabularyForm, word: e.target.value })}
+                  value={termsForm.term}
+                  onChange={(e) => setTermsForm({ ...termsForm, term: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 />
               </div>
@@ -632,8 +671,8 @@ export default function Admin() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">Definition</label>
                 <textarea
                   rows={3}
-                  value={vocabularyForm.definition}
-                  onChange={(e) => setVocabularyForm({ ...vocabularyForm, definition: e.target.value })}
+                  value={termsForm.definition}
+                  onChange={(e) => setTermsForm({ ...termsForm, definition: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 />
               </div>
@@ -642,8 +681,8 @@ export default function Admin() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">Example Sentence</label>
                 <input
                   type="text"
-                  value={vocabularyForm.example}
-                  onChange={(e) => setVocabularyForm({ ...vocabularyForm, example: e.target.value })}
+                  value={termsForm.example}
+                  onChange={(e) => setTermsForm({ ...termsForm, example: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 />
               </div>
@@ -652,8 +691,8 @@ export default function Admin() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Part of Speech</label>
                   <select
-                    value={vocabularyForm.partOfSpeech}
-                    onChange={(e) => setVocabularyForm({ ...vocabularyForm, partOfSpeech: e.target.value })}
+                    value={termsForm.partOfSpeech}
+                    onChange={(e) => setTermsForm({ ...termsForm, partOfSpeech: e.target.value })}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   >
                     <option value="noun">Noun</option>
@@ -668,8 +707,8 @@ export default function Admin() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Level</label>
                   <select
-                    value={vocabularyForm.level}
-                    onChange={(e) => setVocabularyForm({ ...vocabularyForm, level: e.target.value })}
+                    value={termsForm.level}
+                    onChange={(e) => setTermsForm({ ...termsForm, level: e.target.value })}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   >
                     <option value="beginner">Beginner</option>
@@ -682,8 +721,8 @@ export default function Admin() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
                   <input
                     type="text"
-                    value={vocabularyForm.category}
-                    onChange={(e) => setVocabularyForm({ ...vocabularyForm, category: e.target.value })}
+                    value={termsForm.category}
+                    onChange={(e) => setTermsForm({ ...termsForm, category: e.target.value })}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     placeholder="e.g., food, travel"
                   />
@@ -695,7 +734,7 @@ export default function Admin() {
                 disabled={loading}
                 className="w-full bg-primary-600 text-white py-3 rounded-lg font-semibold hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? 'Creating...' : 'Create Vocabulary Word'}
+                {loading ? 'Creating...' : 'Create Term'}
               </button>
             </form>
           )}
@@ -706,7 +745,7 @@ export default function Admin() {
               <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
                 <h3 className="font-semibold text-red-900 mb-2">⚠️ Clean Duplicate Entries</h3>
                 <p className="text-sm text-red-700 mb-3">
-                  Remove duplicate entries from DynamoDB tables. This will keep the most recent entry for each unique title/word.
+                  Remove duplicate entries from DynamoDB tables. This will keep the most recent entry for each unique title/term.
                 </p>
                 <div className="flex gap-2">
                   <button
@@ -715,7 +754,7 @@ export default function Admin() {
                       try {
                         setLoading(true)
                         setMessage(null)
-                        const result = await cleanupDuplicates('grammar_lessons')
+                        const result = await cleanupDuplicates('lessons')
                         showMessage('success', `Grammar lessons cleaned: ${result.deleted} duplicates removed, ${result.uniqueItems} unique items kept`)
                       } catch (error: any) {
                         showMessage('error', error.message || 'Failed to clean duplicates')
@@ -730,12 +769,12 @@ export default function Admin() {
                   </button>
                   <button
                     onClick={async () => {
-                      if (!confirm('Are you sure you want to clean duplicate vocabulary words? This action cannot be undone.')) return
+                      if (!confirm('Are you sure you want to clean duplicate Terms? This action cannot be undone.')) return
                       try {
                         setLoading(true)
                         setMessage(null)
-                        const result = await cleanupDuplicates('vocabulary_words')
-                        showMessage('success', `Vocabulary words cleaned: ${result.deleted} duplicates removed, ${result.uniqueItems} unique items kept`)
+                        const result = await cleanupDuplicates('terms')
+                        showMessage('success', `Terms cleaned: ${result.deleted} duplicates removed, ${result.uniqueItems} unique items kept`)
                       } catch (error: any) {
                         showMessage('error', error.message || 'Failed to clean duplicates')
                       } finally {
@@ -745,7 +784,7 @@ export default function Admin() {
                     disabled={loading}
                     className="flex-1 bg-red-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {loading ? 'Cleaning...' : 'Clean Vocabulary Words'}
+                    {loading ? 'Cleaning...' : 'Clean Terms'}
                   </button>
                 </div>
               </div>
@@ -753,7 +792,7 @@ export default function Admin() {
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
                 <h3 className="font-semibold text-blue-900 mb-2">Quick Load Seed Data</h3>
                 <p className="text-sm text-blue-700 mb-3">
-                  Load all seed data (grammar lessons, vocabulary words, quizzes) from seed-data.json file
+                  Load all seed data (grammar lessons, Terms, quizzes) from seed-data.json file
                 </p>
                 <button
                   onClick={async () => {
@@ -775,7 +814,7 @@ export default function Admin() {
                       // Upload Grammar Lessons
                       if (seedData.grammar_lessons && seedData.grammar_lessons.length > 0) {
                         try {
-                          const result = await bulkUpload('grammar_lessons', seedData.grammar_lessons)
+                          const result = await bulkUpload('lessons', seedData.grammar_lessons)
                           totalSuccess += result.results.success.length
                           totalErrors += result.results.errors.length
                           if (result.results.errors.length > 0) {
@@ -786,17 +825,17 @@ export default function Admin() {
                         }
                       }
                       
-                      // Upload Vocabulary Words
-                      if (seedData.vocabulary_words && seedData.vocabulary_words.length > 0) {
+                      // Upload Terms
+                      if (seedData.terms && seedData.terms.length > 0) {
                         try {
-                          const result = await bulkUpload('vocabulary_words', seedData.vocabulary_words)
+                          const result = await bulkUpload('terms', seedData.terms)
                           totalSuccess += result.results.success.length
                           totalErrors += result.results.errors.length
                           if (result.results.errors.length > 0) {
-                            errors.push(`Vocabulary Words: ${result.results.errors.length} errors`)
+                            errors.push(`Terms: ${result.results.errors.length} errors`)
                           }
                         } catch (err: any) {
-                          errors.push(`Vocabulary Words: ${err.message}`)
+                          errors.push(`Terms: ${err.message}`)
                         }
                       }
                       
@@ -804,7 +843,7 @@ export default function Admin() {
                       if (seedData.grammar_quizzes && seedData.grammar_quizzes.length > 0) {
                         for (const quiz of seedData.grammar_quizzes) {
                           try {
-                            await createGrammarQuiz(quiz)
+                            await createLessonQuiz(quiz)
                             totalSuccess++
                           } catch (err: any) {
                             totalErrors++
@@ -813,15 +852,15 @@ export default function Admin() {
                         }
                       }
                       
-                      // Upload Vocabulary Quizzes
-                      if (seedData.vocabulary_quizzes && seedData.vocabulary_quizzes.length > 0) {
-                        for (const quiz of seedData.vocabulary_quizzes) {
+                      // Upload Terms Quizzes
+                      if (seedData.Terms_quizzes && seedData.Terms_quizzes.length > 0) {
+                        for (const quiz of seedData.Terms_quizzes) {
                           try {
-                            await createVocabularyQuiz(quiz)
+                            await createTermsQuiz(quiz)
                             totalSuccess++
                           } catch (err: any) {
                             totalErrors++
-                            errors.push(`Vocabulary Quiz "${quiz.title}": ${err.message}`)
+                            errors.push(`Terms Quiz "${quiz.title}": ${err.message}`)
                           }
                         }
                       }
@@ -847,11 +886,11 @@ export default function Admin() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">Type</label>
                   <select
                     value={bulkType}
-                    onChange={(e) => setBulkType(e.target.value as 'grammar_lessons' | 'vocabulary_words')}
+                    onChange={(e) => setBulkType(e.target.value as 'lessons' | 'terms')}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   >
-                    <option value="grammar_lessons">Grammar Lessons</option>
-                    <option value="vocabulary_words">Vocabulary Words</option>
+                    <option value="lessons">Lessons</option>
+                    <option value="terms">Terms</option>
                   </select>
                 </div>
 
@@ -862,9 +901,9 @@ export default function Admin() {
                     value={bulkData}
                     onChange={(e) => setBulkData(e.target.value)}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent font-mono text-sm"
-                    placeholder={bulkType === 'grammar_lessons' 
+                    placeholder={bulkType === 'lessons' 
                       ? '[\n  {\n    "title": "Present Simple",\n    "subtitle": "Learn the basics",\n    "content": ["First paragraph", "Second paragraph"],\n    "formula": "Subject + Verb",\n    "uses": [{"icon": "🔄", "title": "Habits", "description": "Regular actions", "example": "I drink coffee."}],\n    "examples": [{"sentence": "I work.", "explanation": "Simple statement"}],\n    "tips": ["Tip 1", "Tip 2"],\n    "level": "beginner",\n    "order": 1\n  }\n]'
-                      : '[\n  {\n    "word": "hello",\n    "definition": "A greeting",\n    "example": "Hello, how are you?",\n    "partOfSpeech": "noun",\n    "level": "beginner"\n  }\n]'
+                      : '[\n  {\n    "term": "hello",\n    "definition": "A greeting",\n    "example": "Hello, how are you?",\n    "partOfSpeech": "noun",\n    "level": "beginner"\n  }\n]'
                     }
                   />
                 </div>
@@ -1073,18 +1112,18 @@ export default function Admin() {
             </div>
           )}
 
-          {/* Vocabulary Quiz Form */}
-          {activeTab === 'vocabulary-quiz' && (
+          {/* Terms Quiz Form */}
+          {activeTab === 'terms-quiz' && (
             <div className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Quiz Title *</label>
                 <input
                   type="text"
                   required
-                  value={vocabularyQuizForm.title}
-                  onChange={(e) => setVocabularyQuizForm({ ...vocabularyQuizForm, title: e.target.value })}
+                  value={termsQuizForm.title}
+                  onChange={(e) => settermsQuizForm({ ...termsQuizForm, title: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                  placeholder="e.g., Beginner Vocabulary Quiz"
+                  placeholder="e.g., Beginner Terms Quiz"
                 />
               </div>
 
@@ -1092,8 +1131,8 @@ export default function Admin() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Level</label>
                   <select
-                    value={vocabularyQuizForm.level}
-                    onChange={(e) => setVocabularyQuizForm({ ...vocabularyQuizForm, level: e.target.value })}
+                    value={termsQuizForm.level}
+                    onChange={(e) => settermsQuizForm({ ...termsQuizForm, level: e.target.value })}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   >
                     <option value="beginner">Beginner</option>
@@ -1105,8 +1144,8 @@ export default function Admin() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
                   <input
                     type="text"
-                    value={vocabularyQuizForm.category}
-                    onChange={(e) => setVocabularyQuizForm({ ...vocabularyQuizForm, category: e.target.value })}
+                    value={termsQuizForm.category}
+                    onChange={(e) => settermsQuizForm({ ...termsQuizForm, category: e.target.value })}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                     placeholder="e.g., general, food"
                   />
@@ -1116,15 +1155,15 @@ export default function Admin() {
               {/* Questions */}
               <div className="border-t pt-6">
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">Questions</h3>
-                {vocabularyQuizForm.questions.map((question, qIndex) => (
+                {termsQuizForm.questions.map((question, qIndex) => (
                   <div key={qIndex} className="mb-6 p-4 bg-gray-50 rounded-lg border">
                     <div className="flex justify-between items-start mb-3">
                       <h4 className="font-semibold text-gray-700">Question {qIndex + 1}</h4>
                       <button
                         type="button"
                         onClick={() => {
-                          const newQuestions = vocabularyQuizForm.questions.filter((_, i) => i !== qIndex)
-                          setVocabularyQuizForm({ ...vocabularyQuizForm, questions: newQuestions })
+                          const newQuestions = termsQuizForm.questions.filter((_, i) => i !== qIndex)
+                          setTermsQuizForm({ ...termsQuizForm, questions: newQuestions })
                         }}
                         className="text-red-600 hover:text-red-800"
                       >
@@ -1135,25 +1174,25 @@ export default function Admin() {
                       <select
                         value={question.type}
                         onChange={(e) => {
-                          const newQuestions = [...vocabularyQuizForm.questions]
+                          const newQuestions = [...termsQuizForm.questions]
                           newQuestions[qIndex].type = e.target.value
-                          setVocabularyQuizForm({ ...vocabularyQuizForm, questions: newQuestions })
+                          setTermsQuizForm({ ...termsQuizForm, questions: newQuestions })
                         }}
                         className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-primary-500"
                       >
                         <option value="definition">Definition</option>
-                        <option value="word-selection">Word Selection</option>
+                        <option value="term-selection">Term Selection</option>
                         <option value="multiple-choice">Multiple Choice</option>
                       </select>
-                      {question.type !== 'word-selection' && (
+                      {question.type !== 'term-selection' && (
                         <input
                           type="text"
-                          placeholder="Word"
-                          value={question.word}
+                          placeholder="Term"
+                          value={question.term}
                           onChange={(e) => {
-                            const newQuestions = [...vocabularyQuizForm.questions]
-                            newQuestions[qIndex].word = e.target.value
-                            setVocabularyQuizForm({ ...vocabularyQuizForm, questions: newQuestions })
+                            const newQuestions = [...termsQuizForm.questions]
+                            newQuestions[qIndex].term = e.target.value
+                            setTermsQuizForm({ ...termsQuizForm, questions: newQuestions })
                           }}
                           className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-primary-500"
                         />
@@ -1163,9 +1202,9 @@ export default function Admin() {
                         placeholder="Definition"
                         value={question.definition}
                         onChange={(e) => {
-                          const newQuestions = [...vocabularyQuizForm.questions]
+                          const newQuestions = [...termsQuizForm.questions]
                           newQuestions[qIndex].definition = e.target.value
-                          setVocabularyQuizForm({ ...vocabularyQuizForm, questions: newQuestions })
+                          setTermsQuizForm({ ...termsQuizForm, questions: newQuestions })
                         }}
                         className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-primary-500"
                       />
@@ -1177,9 +1216,9 @@ export default function Admin() {
                               name={`vocab-correct-${qIndex}`}
                               checked={question.correctAnswer === oIndex}
                               onChange={() => {
-                                const newQuestions = [...vocabularyQuizForm.questions]
+                                const newQuestions = [...termsQuizForm.questions]
                                 newQuestions[qIndex].correctAnswer = oIndex
-                                setVocabularyQuizForm({ ...vocabularyQuizForm, questions: newQuestions })
+                                setTermsQuizForm({ ...termsQuizForm, questions: newQuestions })
                               }}
                               className="w-4 h-4 text-primary-600"
                             />
@@ -1188,9 +1227,9 @@ export default function Admin() {
                               placeholder={`Option ${oIndex + 1}`}
                               value={option}
                               onChange={(e) => {
-                                const newQuestions = [...vocabularyQuizForm.questions]
+                                const newQuestions = [...termsQuizForm.questions]
                                 newQuestions[qIndex].options[oIndex] = e.target.value
-                                setVocabularyQuizForm({ ...vocabularyQuizForm, questions: newQuestions })
+                                setTermsQuizForm({ ...termsQuizForm, questions: newQuestions })
                               }}
                               className="flex-1 px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-primary-500"
                             />
@@ -1202,9 +1241,9 @@ export default function Admin() {
                         placeholder="Example sentence (optional)"
                         value={question.example}
                         onChange={(e) => {
-                          const newQuestions = [...vocabularyQuizForm.questions]
+                          const newQuestions = [...termsQuizForm.questions]
                           newQuestions[qIndex].example = e.target.value
-                          setVocabularyQuizForm({ ...vocabularyQuizForm, questions: newQuestions })
+                          setTermsQuizForm({ ...termsQuizForm, questions: newQuestions })
                         }}
                         className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-primary-500"
                       />
@@ -1213,9 +1252,9 @@ export default function Admin() {
                         placeholder="Explanation (optional)"
                         value={question.explanation}
                         onChange={(e) => {
-                          const newQuestions = [...vocabularyQuizForm.questions]
+                          const newQuestions = [...termsQuizForm.questions]
                           newQuestions[qIndex].explanation = e.target.value
-                          setVocabularyQuizForm({ ...vocabularyQuizForm, questions: newQuestions })
+                          setTermsQuizForm({ ...termsQuizForm, questions: newQuestions })
                         }}
                         className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-primary-500"
                       />
@@ -1225,38 +1264,38 @@ export default function Admin() {
                 <div className="p-4 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
                   <div className="space-y-3">
                     <select
-                      value={newVocabularyQuestion.type}
-                      onChange={(e) => setNewVocabularyQuestion({ ...newVocabularyQuestion, type: e.target.value })}
+                      value={newTermsQuestion.type}
+                      onChange={(e) => setNewTermsQuestion({ ...newTermsQuestion, type: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-primary-500"
                     >
                       <option value="definition">Definition</option>
                       <option value="word-selection">Word Selection</option>
                       <option value="multiple-choice">Multiple Choice</option>
                     </select>
-                    {newVocabularyQuestion.type !== 'word-selection' && (
+                    {newTermsQuestion.type !== 'term-selection' && (
                       <input
                         type="text"
-                        placeholder="Word"
-                        value={newVocabularyQuestion.word}
-                        onChange={(e) => setNewVocabularyQuestion({ ...newVocabularyQuestion, word: e.target.value })}
+                        placeholder="Term"
+                        value={newTermsQuestion.term}
+                        onChange={(e) => setNewTermsQuestion({ ...newTermsQuestion, term: e.target.value })}
                         className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-primary-500"
                       />
                     )}
                     <input
                       type="text"
                       placeholder="Definition"
-                      value={newVocabularyQuestion.definition}
-                      onChange={(e) => setNewVocabularyQuestion({ ...newVocabularyQuestion, definition: e.target.value })}
+                      value={newTermsQuestion.definition}
+                        onChange={(e) => setNewTermsQuestion({ ...newTermsQuestion, definition: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-primary-500"
                     />
                     <div className="space-y-2">
-                      {newVocabularyQuestion.options.map((option, oIndex) => (
+                      {newTermsQuestion.options.map((option, oIndex) => (
                         <div key={oIndex} className="flex items-center gap-2">
                           <input
                             type="radio"
                             name="new-vocab-correct"
-                            checked={newVocabularyQuestion.correctAnswer === oIndex}
-                            onChange={() => setNewVocabularyQuestion({ ...newVocabularyQuestion, correctAnswer: oIndex })}
+                            checked={newTermsQuestion.correctAnswer === oIndex}
+                            onChange={() => setNewTermsQuestion({ ...newTermsQuestion, correctAnswer: oIndex })}
                             className="w-4 h-4 text-primary-600"
                           />
                           <input
@@ -1264,9 +1303,9 @@ export default function Admin() {
                             placeholder={`Option ${oIndex + 1}`}
                             value={option}
                             onChange={(e) => {
-                              const newOptions = [...newVocabularyQuestion.options]
+                              const newOptions = [...newTermsQuestion.options]
                               newOptions[oIndex] = e.target.value
-                              setNewVocabularyQuestion({ ...newVocabularyQuestion, options: newOptions })
+                              setNewTermsQuestion({ ...newTermsQuestion, options: newOptions })
                             }}
                             className="flex-1 px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-primary-500"
                           />
@@ -1276,29 +1315,29 @@ export default function Admin() {
                     <input
                       type="text"
                       placeholder="Example sentence (optional)"
-                      value={newVocabularyQuestion.example}
-                      onChange={(e) => setNewVocabularyQuestion({ ...newVocabularyQuestion, example: e.target.value })}
+                      value={newTermsQuestion.example}
+                      onChange={(e) => setNewTermsQuestion({ ...newTermsQuestion, example: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-primary-500"
                     />
                     <input
                       type="text"
                       placeholder="Explanation (optional)"
-                      value={newVocabularyQuestion.explanation}
-                      onChange={(e) => setNewVocabularyQuestion({ ...newVocabularyQuestion, explanation: e.target.value })}
+                      value={newTermsQuestion.explanation}
+                      onChange={(e) => setNewTermsQuestion({ ...newTermsQuestion, explanation: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-primary-500"
                     />
                     <button
                       type="button"
                       onClick={() => {
-                        if (newVocabularyQuestion.definition && newVocabularyQuestion.options.filter(o => o.trim()).length >= 2) {
-                          setVocabularyQuizForm({
-                            ...vocabularyQuizForm,
-                            questions: [...vocabularyQuizForm.questions, {
-                              id: `q${vocabularyQuizForm.questions.length + 1}`,
-                              ...newVocabularyQuestion
+                        if (newTermsQuestion.definition && newTermsQuestion.options.filter(o => o.trim()).length >= 2) {
+                          settermsQuizForm({
+                            ...termsQuizForm,
+                            questions: [...termsQuizForm.questions, {
+                              id: `q${termsQuizForm.questions.length + 1}`,
+                              ...newTermsQuestion
                             }]
                           })
-                          setNewVocabularyQuestion({ type: 'definition', word: '', definition: '', options: ['', '', '', ''], correctAnswer: 0, example: '', explanation: '' })
+                          setNewTermsQuestion({ type: 'definition', term: '', definition: '', options: ['', '', '', ''], correctAnswer: 0, example: '', explanation: '' })
                         }
                       }}
                       className="text-primary-600 hover:text-primary-800 text-sm font-medium"
@@ -1311,19 +1350,19 @@ export default function Admin() {
 
               <button
                 onClick={async () => {
-                  if (!vocabularyQuizForm.title || vocabularyQuizForm.questions.length === 0) {
+                  if (!termsQuizForm.title || termsQuizForm.questions.length === 0) {
                     showMessage('error', 'Please fill in all required fields and add at least one question')
                     return
                   }
                   setLoading(true)
                   setMessage(null)
                   try {
-                    await createVocabularyQuiz(vocabularyQuizForm)
-                    showMessage('success', 'Vocabulary quiz created successfully!')
-                    setVocabularyQuizForm({ title: '', level: 'beginner', category: 'general', questions: [] })
-                    setNewVocabularyQuestion({ type: 'definition', word: '', definition: '', options: ['', '', '', ''], correctAnswer: 0, example: '', explanation: '' })
+                    await createTermsQuiz(termsQuizForm)
+                    showMessage('success', 'Terms Quiz created successfully!')
+                    settermsQuizForm({ title: '', level: 'beginner', category: 'general', questions: [] })
+                    setNewTermsQuestion({ type: 'definition', term: '', definition: '', options: ['', '', '', ''], correctAnswer: 0, example: '', explanation: '' })
                   } catch (error: any) {
-                    showMessage('error', error.message || 'Failed to create vocabulary quiz')
+                    showMessage('error', error.message || 'Failed to create Terms Quiz')
                   } finally {
                     setLoading(false)
                   }
@@ -1331,7 +1370,7 @@ export default function Admin() {
                 disabled={loading}
                 className="w-full bg-primary-600 text-white py-3 rounded-lg font-semibold hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? 'Creating...' : 'Create Vocabulary Quiz'}
+                {loading ? 'Creating...' : 'Create Terms Quiz'}
               </button>
             </div>
           )}
@@ -1789,6 +1828,208 @@ export default function Admin() {
                       </div>
                     </div>
                   )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* App Settings */}
+          {activeTab === 'settings' && (
+            <div className="space-y-6">
+              <div className="bg-indigo-50 p-4 rounded-lg mb-6">
+                <h2 className="text-xl font-bold text-gray-900 mb-2">App Settings</h2>
+                <p className="text-sm text-gray-600">Configure which features are enabled in your learning platform</p>
+              </div>
+
+              <div className="bg-white border-2 border-gray-200 rounded-lg p-6">
+                <h3 className="text-lg font-semibold mb-4">Feature Toggles</h3>
+                
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <div>
+                      <h4 className="font-semibold text-gray-900">Lessons</h4>
+                      <p className="text-sm text-gray-600">Enable lesson pages (formerly Grammar)</p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={appConfig.features.lessons}
+                        onChange={(e) => setAppConfig({ ...appConfig, features: { ...appConfig.features, lessons: e.target.checked } })}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
+                    </label>
+                  </div>
+
+                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <div>
+                      <h4 className="font-semibold text-gray-900">Terms / Formulas</h4>
+                      <p className="text-sm text-gray-600">Enable Terms or formulas section</p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={appConfig.features.Terms}
+                        onChange={(e) => setAppConfig({ ...appConfig, features: { ...appConfig.features, Terms: e.target.checked } })}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
+                    </label>
+                  </div>
+
+                  {appConfig.features.Terms && (
+                    <div className="ml-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Terms Type</label>
+                      <select
+                        value={appConfig.TermsType || 'formulas'}
+                        onChange={(e) => setAppConfig({ ...appConfig, TermsType: e.target.value as 'formulas' | 'memorizing' })}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                      >
+                        <option value="formulas">Formulas</option>
+                        <option value="memorizing">Memorizing Terms</option>
+                      </select>
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <div>
+                      <h4 className="font-semibold text-gray-900">Quizzes</h4>
+                      <p className="text-sm text-gray-600">Enable quiz functionality</p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={appConfig.features.quizzes}
+                        onChange={(e) => setAppConfig({ ...appConfig, features: { ...appConfig.features, quizzes: e.target.checked } })}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
+                    </label>
+                  </div>
+                </div>
+
+                <div className="mt-6">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        setLoading(true)
+                        await updateAppConfig(appConfig)
+                        showMessage('success', 'Settings saved successfully!')
+                      } catch (error: any) {
+                        showMessage('error', error.message || 'Failed to save settings')
+                      } finally {
+                        setLoading(false)
+                      }
+                    }}
+                    className="w-full px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-semibold"
+                    disabled={loading}
+                  >
+                    {loading ? 'Saving...' : 'Save Settings'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* JSON Template Generator */}
+          {activeTab === 'template' && (
+            <div className="space-y-6">
+              <div className="bg-yellow-50 p-4 rounded-lg mb-6">
+                <h2 className="text-xl font-bold text-gray-900 mb-2">JSON Template Generator</h2>
+                <p className="text-sm text-gray-600">Generate a JSON template based on your current settings for bulk upload</p>
+              </div>
+
+              <div className="bg-white border-2 border-gray-200 rounded-lg p-6">
+                <div className="mb-4">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        // Load current levels and categories
+                        const [levelsData, categoriesData] = await Promise.all([
+                          getLevels().catch(() => ({ levels: [] })),
+                          getCategories().catch(() => ({ categories: [] }))
+                        ])
+
+                        const template: any = {}
+
+                        if (appConfig.features.lessons) {
+                          template.lessons = [{
+                            title: "Example Lesson Title",
+                            subtitle: "Example subtitle",
+                            content: ["First paragraph", "Second paragraph"],
+                            formula: "Example formula (optional)",
+                            level: levelsData.levels[0]?.name.toLowerCase() || "beginner",
+                            order: 1,
+                            uses: [],
+                            examples: [],
+                            tips: []
+                          }]
+                        }
+
+                        if (appConfig.features.Terms) {
+                          if (appConfig.TermsType === 'formulas') {
+                            template.formulas = [{
+                              title: "Example Formula",
+                              description: "Formula description",
+                              formula: "a² + b² = c²",
+                              level: levelsData.levels[0]?.name.toLowerCase() || "beginner",
+                              category: categoriesData.categories[0]?.name.toLowerCase() || "general",
+                              order: 1
+                            }]
+                          } else {
+                            template.terms = [{
+                              term: "example",
+                              definition: "A thing characteristic of its kind",
+                              example: "This is an example sentence.",
+                              partOfSpeech: "noun",
+                              level: levelsData.levels[0]?.name.toLowerCase() || "beginner",
+                              category: categoriesData.categories[0]?.name.toLowerCase() || "general"
+                            }]
+                          }
+                        }
+
+                        if (appConfig.features.quizzes) {
+                          template.quizzes = [{
+                            lessonId: "lesson-id-here",
+                            title: "Example Quiz",
+                            questions: [{
+                              id: "q1",
+                              question: "What is the answer?",
+                              options: ["Option 1", "Option 2", "Option 3", "Option 4"],
+                              correctAnswer: 0,
+                              explanation: "Explanation here"
+                            }]
+                          }]
+                        }
+
+                        const jsonString = JSON.stringify(template, null, 2)
+                        navigator.clipboard.writeText(jsonString)
+                        showMessage('success', 'Template copied to clipboard!')
+                      } catch (error: any) {
+                        showMessage('error', error.message || 'Failed to generate template')
+                      }
+                    }}
+                    className="w-full px-6 py-3 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors font-semibold mb-4"
+                  >
+                    Generate & Copy Template
+                  </button>
+                </div>
+
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <p className="text-sm text-gray-600 mb-2">Current Settings:</p>
+                  <ul className="text-sm text-gray-700 space-y-1">
+                    <li>• Lessons: {appConfig.features.lessons ? 'Enabled' : 'Disabled'}</li>
+                    <li>• Terms/Formulas: {appConfig.features.Terms ? `Enabled (${appConfig.TermsType})` : 'Disabled'}</li>
+                    <li>• Quizzes: {appConfig.features.quizzes ? 'Enabled' : 'Disabled'}</li>
+                  </ul>
+                </div>
+
+                <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <p className="text-sm text-blue-800">
+                    <strong>Tip:</strong> After generating the template, you can use it in the "Bulk Upload" tab to upload multiple items at once.
+                  </p>
                 </div>
               </div>
             </div>

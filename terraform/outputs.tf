@@ -1,26 +1,26 @@
 output "cloudfront_distribution_id" {
   description = "CloudFront distribution ID"
-  value       = aws_cloudfront_distribution.tilgo_distribution.id
+  value       = aws_cloudfront_distribution.cteach_distribution.id
 }
 
 output "cloudfront_domain_name" {
   description = "CloudFront distribution domain name"
-  value       = aws_cloudfront_distribution.tilgo_distribution.domain_name
+  value       = aws_cloudfront_distribution.cteach_distribution.domain_name
 }
 
 output "s3_bucket_name" {
   description = "S3 bucket name"
-  value       = aws_s3_bucket.tilgo_website.id
+  value       = aws_s3_bucket.cteach_website.id
 }
 
 output "api_gateway_url" {
   description = "API Gateway endpoint URL"
-  value       = aws_api_gateway_stage.tilgo_api.invoke_url
+  value       = aws_api_gateway_stage.cteach_api.invoke_url
 }
 
 output "api_gateway_id" {
   description = "API Gateway ID"
-  value       = aws_api_gateway_rest_api.tilgo_api.id
+  value       = aws_api_gateway_rest_api.cteach_api.id
 }
 
 output "dynamodb_tables" {
@@ -35,12 +35,12 @@ output "dynamodb_tables" {
 
 output "certificate_arn" {
   description = "ACM Certificate ARN"
-  value       = aws_acm_certificate_validation.tilgo_cert.certificate_arn
+  value       = aws_acm_certificate_validation.cteach_cert.certificate_arn
 }
 
 output "route53_record" {
   description = "Route53 record name"
-  value       = aws_route53_record.tilgo.fqdn
+  value       = aws_route53_record.cteach.fqdn
 }
 
 output "lambda_functions" {

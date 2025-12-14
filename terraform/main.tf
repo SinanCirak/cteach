@@ -24,17 +24,17 @@ provider "aws" {
 }
 
 # S3 Bucket for React static site
-resource "aws_s3_bucket" "tilgo_website" {
+resource "aws_s3_bucket" "cteach_website" {
   bucket = var.bucket_name
 
   tags = {
-    Name        = "Tilgo Website"
+    Name        = "cteach Website"
     Environment = var.environment
   }
 }
 
-resource "aws_s3_bucket_website_configuration" "tilgo_website" {
-  bucket = aws_s3_bucket.tilgo_website.id
+resource "aws_s3_bucket_website_configuration" "cteach_website" {
+  bucket = aws_s3_bucket.cteach_website.id
 
   index_document {
     suffix = "index.html"
@@ -45,8 +45,8 @@ resource "aws_s3_bucket_website_configuration" "tilgo_website" {
   }
 }
 
-resource "aws_s3_bucket_public_access_block" "tilgo_website" {
-  bucket = aws_s3_bucket.tilgo_website.id
+resource "aws_s3_bucket_public_access_block" "cteach_website" {
+  bucket = aws_s3_bucket.cteach_website.id
 
   block_public_acls       = true
   block_public_policy     = true
@@ -54,32 +54,32 @@ resource "aws_s3_bucket_public_access_block" "tilgo_website" {
   restrict_public_buckets = true
 }
 
-resource "aws_s3_bucket_versioning" "tilgo_website" {
-  bucket = aws_s3_bucket.tilgo_website.id
+resource "aws_s3_bucket_versioning" "cteach_website" {
+  bucket = aws_s3_bucket.cteach_website.id
   versioning_configuration {
     status = "Enabled"
   }
 }
 
 # CloudFront Origin Access Identity
-resource "aws_cloudfront_origin_access_identity" "tilgo_oai" {
-  comment = "OAI for Tilgo website"
+resource "aws_cloudfront_origin_access_identity" "cteach_oai" {
+  comment = "OAI for cteach website"
 }
 
 # CloudFront Distribution
-resource "aws_cloudfront_distribution" "tilgo_distribution" {
+resource "aws_cloudfront_distribution" "cteach_distribution" {
   origin {
-    domain_name = aws_s3_bucket.tilgo_website.bucket_regional_domain_name
-    origin_id   = "S3-${aws_s3_bucket.tilgo_website.id}"
+    domain_name = aws_s3_bucket.cteach_website.bucket_regional_domain_name
+    origin_id   = "S3-${aws_s3_bucket.cteach_website.id}"
 
     s3_origin_config {
-      origin_access_identity = aws_cloudfront_origin_access_identity.tilgo_oai.cloudfront_access_identity_path
+      origin_access_identity = aws_cloudfront_origin_access_identity.cteach_oai.cloudfront_access_identity_path
     }
   }
 
   enabled             = true
   is_ipv6_enabled     = true
-  comment             = "Tilgo website distribution"
+  comment             = "cteach website distribution"
   default_root_object = "index.html"
 
   aliases = [var.domain_name]
@@ -87,7 +87,7 @@ resource "aws_cloudfront_distribution" "tilgo_distribution" {
   default_cache_behavior {
     allowed_methods  = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
     cached_methods   = ["GET", "HEAD"]
-    target_origin_id = "S3-${aws_s3_bucket.tilgo_website.id}"
+    target_origin_id = "S3-${aws_s3_bucket.cteach_website.id}"
 
     forwarded_values {
       query_string = false
@@ -105,7 +105,7 @@ resource "aws_cloudfront_distribution" "tilgo_distribution" {
 
   # API Gateway origin for API calls
   origin {
-    domain_name = replace(aws_api_gateway_stage.tilgo_api.invoke_url, "/^https?://([^/]+).*$/", "$1")
+    domain_name = replace(aws_api_gateway_stage.cteach_api.invoke_url, "/^https?://([^/]+).*$/", "$1")
     origin_id   = "api-gateway"
     origin_path = "/prod"
 
@@ -145,7 +145,7 @@ resource "aws_cloudfront_distribution" "tilgo_distribution" {
   }
 
   viewer_certificate {
-    acm_certificate_arn      = aws_acm_certificate_validation.tilgo_cert.certificate_arn
+    acm_certificate_arn      = aws_acm_certificate_validation.cteach_cert.certificate_arn
     ssl_support_method       = "sni-only"
     minimum_protocol_version = "TLSv1.2_2021"
   }
@@ -164,13 +164,13 @@ resource "aws_cloudfront_distribution" "tilgo_distribution" {
 
   tags = {
     Environment = var.environment
-    Name        = "Tilgo Distribution"
+    Name        = "cteach Distribution"
   }
 }
 
 # S3 Bucket Policy for CloudFront
-resource "aws_s3_bucket_policy" "tilgo_website_policy" {
-  bucket = aws_s3_bucket.tilgo_website.id
+resource "aws_s3_bucket_policy" "cteach_website_policy" {
+  bucket = aws_s3_bucket.cteach_website.id
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -179,17 +179,17 @@ resource "aws_s3_bucket_policy" "tilgo_website_policy" {
         Sid    = "AllowCloudFrontOAI"
         Effect = "Allow"
         Principal = {
-          AWS = aws_cloudfront_origin_access_identity.tilgo_oai.iam_arn
+          AWS = aws_cloudfront_origin_access_identity.cteach_oai.iam_arn
         }
         Action   = "s3:GetObject"
-        Resource = "${aws_s3_bucket.tilgo_website.arn}/*"
+        Resource = "${aws_s3_bucket.cteach_website.arn}/*"
       }
     ]
   })
 }
 
 # ACM Certificate for HTTPS (must be in us-east-1 for CloudFront)
-resource "aws_acm_certificate" "tilgo_cert" {
+resource "aws_acm_certificate" "cteach_cert" {
   provider          = aws.us_east_1
   domain_name       = var.domain_name
   validation_method = "DNS"
@@ -201,7 +201,7 @@ resource "aws_acm_certificate" "tilgo_cert" {
   }
 
   tags = {
-    Name = "Tilgo Certificate"
+    Name = "cteach Certificate"
   }
 }
 
@@ -209,7 +209,7 @@ resource "aws_acm_certificate" "tilgo_cert" {
 resource "aws_route53_record" "cert_validation" {
   provider = aws.us_east_1
   for_each = {
-    for dvo in aws_acm_certificate.tilgo_cert.domain_validation_options : dvo.domain_name => {
+    for dvo in aws_acm_certificate.cteach_cert.domain_validation_options : dvo.domain_name => {
       name   = dvo.resource_record_name
       record = dvo.resource_record_value
       type   = dvo.resource_record_type
@@ -225,9 +225,9 @@ resource "aws_route53_record" "cert_validation" {
 }
 
 # Certificate validation
-resource "aws_acm_certificate_validation" "tilgo_cert" {
+resource "aws_acm_certificate_validation" "cteach_cert" {
   provider        = aws.us_east_1
-  certificate_arn = aws_acm_certificate.tilgo_cert.arn
+  certificate_arn = aws_acm_certificate.cteach_cert.arn
   validation_record_fqdns = [for record in aws_route53_record.cert_validation : record.fqdn]
 }
 
@@ -236,14 +236,14 @@ data "aws_route53_zone" "main" {
   name = var.root_domain
 }
 
-resource "aws_route53_record" "tilgo" {
+resource "aws_route53_record" "cteach" {
   zone_id = data.aws_route53_zone.main.zone_id
   name    = var.domain_name
   type    = "A"
 
   alias {
-    name                   = aws_cloudfront_distribution.tilgo_distribution.domain_name
-    zone_id                = aws_cloudfront_distribution.tilgo_distribution.hosted_zone_id
+    name                   = aws_cloudfront_distribution.cteach_distribution.domain_name
+    zone_id                = aws_cloudfront_distribution.cteach_distribution.hosted_zone_id
     evaluate_target_health = false
   }
 }
@@ -292,35 +292,35 @@ resource "aws_dynamodb_table" "grammar_quizzes" {
   }
 }
 
-resource "aws_dynamodb_table" "vocabulary_words" {
-  name           = "vocabulary_words"
+resource "aws_dynamodb_table" "terms" {
+  name           = "terms"
   billing_mode   = "PAY_PER_REQUEST"
-  hash_key       = "wordId"
+  hash_key       = "termId"
 
   attribute {
-    name = "wordId"
+    name = "termId"
     type = "S"
   }
 
   attribute {
-    name = "word"
+    name = "term"
     type = "S"
   }
 
   global_secondary_index {
-    name     = "word-index"
-    hash_key = "word"
+    name     = "term-index"
+    hash_key = "term"
     projection_type = "ALL"
   }
 
   tags = {
-    Name        = "Vocabulary Words"
+    Name        = "Terms"
     Environment = var.environment
   }
 }
 
-resource "aws_dynamodb_table" "vocabulary_quizzes" {
-  name           = "vocabulary_quizzes"
+resource "aws_dynamodb_table" "terms_quizzes" {
+  name           = "terms_quizzes"
   billing_mode   = "PAY_PER_REQUEST"
   hash_key       = "quizId"
 
@@ -330,7 +330,7 @@ resource "aws_dynamodb_table" "vocabulary_quizzes" {
   }
 
   tags = {
-    Name        = "Vocabulary Quizzes"
+    Name        = "Terms Quizzes"
     Environment = var.environment
   }
 }
@@ -397,18 +397,35 @@ resource "aws_dynamodb_table" "categories" {
   }
 }
 
-# S3 Bucket for Images
-resource "aws_s3_bucket" "tilgo_images" {
-  bucket = "${var.bucket_name}-images"
+# App Configuration Table
+resource "aws_dynamodb_table" "app_config" {
+  name           = "app_config"
+  billing_mode   = "PAY_PER_REQUEST"
+  hash_key       = "configKey"
+
+  attribute {
+    name = "configKey"
+    type = "S"
+  }
 
   tags = {
-    Name        = "Tilgo Images"
+    Name        = "App Configuration"
     Environment = var.environment
   }
 }
 
-resource "aws_s3_bucket_public_access_block" "tilgo_images" {
-  bucket = aws_s3_bucket.tilgo_images.id
+# S3 Bucket for Images
+resource "aws_s3_bucket" "cteach_images" {
+  bucket = "${var.bucket_name}-images"
+
+  tags = {
+    Name        = "cteach Images"
+    Environment = var.environment
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "cteach_images" {
+  bucket = aws_s3_bucket.cteach_images.id
 
   block_public_acls       = true
   block_public_policy    = true
@@ -416,15 +433,15 @@ resource "aws_s3_bucket_public_access_block" "tilgo_images" {
   restrict_public_buckets = true
 }
 
-resource "aws_s3_bucket_versioning" "tilgo_images" {
-  bucket = aws_s3_bucket.tilgo_images.id
+resource "aws_s3_bucket_versioning" "cteach_images" {
+  bucket = aws_s3_bucket.cteach_images.id
   versioning_configuration {
     status = "Enabled"
   }
 }
 
-resource "aws_s3_bucket_cors_configuration" "tilgo_images" {
-  bucket = aws_s3_bucket.tilgo_images.id
+resource "aws_s3_bucket_cors_configuration" "cteach_images" {
+  bucket = aws_s3_bucket.cteach_images.id
 
   cors_rule {
     allowed_headers = ["*"]
@@ -437,7 +454,7 @@ resource "aws_s3_bucket_cors_configuration" "tilgo_images" {
 
 # IAM Role for Lambda
 resource "aws_iam_role" "lambda_role" {
-  name = "tilgo-lambda-role"
+  name = "cteach-lambda-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -454,7 +471,7 @@ resource "aws_iam_role" "lambda_role" {
 }
 
 resource "aws_iam_role_policy" "lambda_dynamodb_policy" {
-  name = "tilgo-lambda-dynamodb-policy"
+  name = "cteach-lambda-dynamodb-policy"
   role = aws_iam_role.lambda_role.id
 
   policy = jsonencode({
@@ -475,13 +492,14 @@ resource "aws_iam_role_policy" "lambda_dynamodb_policy" {
           "${aws_dynamodb_table.grammar_lessons.arn}/index/*",
           aws_dynamodb_table.grammar_quizzes.arn,
           "${aws_dynamodb_table.grammar_quizzes.arn}/index/*",
-          aws_dynamodb_table.vocabulary_words.arn,
-          "${aws_dynamodb_table.vocabulary_words.arn}/index/*",
-          aws_dynamodb_table.vocabulary_quizzes.arn,
+          aws_dynamodb_table.terms.arn,
+          "${aws_dynamodb_table.terms.arn}/index/*",
+          aws_dynamodb_table.terms_quizzes.arn,
           aws_dynamodb_table.word_translations.arn,
           aws_dynamodb_table.levels.arn,
           "${aws_dynamodb_table.levels.arn}/index/*",
-          aws_dynamodb_table.categories.arn
+          aws_dynamodb_table.categories.arn,
+          aws_dynamodb_table.app_config.arn
         ]
       },
       {
@@ -493,8 +511,8 @@ resource "aws_iam_role_policy" "lambda_dynamodb_policy" {
           "s3:ListBucket"
         ]
         Resource = [
-          aws_s3_bucket.tilgo_images.arn,
-          "${aws_s3_bucket.tilgo_images.arn}/*"
+          aws_s3_bucket.cteach_images.arn,
+          "${aws_s3_bucket.cteach_images.arn}/*"
         ]
       },
       {
@@ -530,46 +548,46 @@ data "archive_file" "batch_translate_zip" {
   output_path = "${path.module}/lambda-packages/batch-translate.zip"
 }
 
-data "archive_file" "get_grammar_lessons_zip" {
+data "archive_file" "get_lessons_zip" {
   type        = "zip"
-  source_dir  = "${path.module}/../lambda/get-grammar-lessons"
-  output_path = "${path.module}/lambda-packages/get-grammar-lessons.zip"
+  source_dir  = "${path.module}/../lambda/get-lessons"
+  output_path = "${path.module}/lambda-packages/get-lessons.zip"
 }
 
-data "archive_file" "get_grammar_lesson_zip" {
+data "archive_file" "get_lesson_zip" {
   type        = "zip"
-  source_dir  = "${path.module}/../lambda/get-grammar-lesson"
-  output_path = "${path.module}/lambda-packages/get-grammar-lesson.zip"
+  source_dir  = "${path.module}/../lambda/get-lesson"
+  output_path = "${path.module}/lambda-packages/get-lesson.zip"
 }
 
-data "archive_file" "get_grammar_quiz_zip" {
+data "archive_file" "get_lesson_quiz_zip" {
   type        = "zip"
-  source_dir  = "${path.module}/../lambda/get-grammar-quiz"
-  output_path = "${path.module}/lambda-packages/get-grammar-quiz.zip"
+  source_dir  = "${path.module}/../lambda/get-lesson-quiz"
+  output_path = "${path.module}/lambda-packages/get-lesson-quiz.zip"
 }
 
-data "archive_file" "get_vocabulary_words_zip" {
+data "archive_file" "get_terms_zip" {
   type        = "zip"
-  source_dir  = "${path.module}/../lambda/get-vocabulary-words"
-  output_path = "${path.module}/lambda-packages/get-vocabulary-words.zip"
+  source_dir  = "${path.module}/../lambda/get-terms"
+  output_path = "${path.module}/lambda-packages/get-terms.zip"
 }
 
-data "archive_file" "get_vocabulary_quiz_zip" {
+data "archive_file" "get_terms_quiz_zip" {
   type        = "zip"
-  source_dir  = "${path.module}/../lambda/get-vocabulary-quiz"
-  output_path = "${path.module}/lambda-packages/get-vocabulary-quiz.zip"
+  source_dir  = "${path.module}/../lambda/get-terms-quiz"
+  output_path = "${path.module}/lambda-packages/get-terms-quiz.zip"
 }
 
-data "archive_file" "create_grammar_lesson_zip" {
+data "archive_file" "create_lesson_zip" {
   type        = "zip"
-  source_dir  = "${path.module}/../lambda/create-grammar-lesson"
-  output_path = "${path.module}/lambda-packages/create-grammar-lesson.zip"
+  source_dir  = "${path.module}/../lambda/create-lesson"
+  output_path = "${path.module}/lambda-packages/create-lesson.zip"
 }
 
-data "archive_file" "create_vocabulary_word_zip" {
+data "archive_file" "create_term_zip" {
   type        = "zip"
-  source_dir  = "${path.module}/../lambda/create-vocabulary-word"
-  output_path = "${path.module}/lambda-packages/create-vocabulary-word.zip"
+  source_dir  = "${path.module}/../lambda/create-term"
+  output_path = "${path.module}/lambda-packages/create-term.zip"
 }
 
 data "archive_file" "bulk_upload_zip" {
@@ -578,16 +596,16 @@ data "archive_file" "bulk_upload_zip" {
   output_path = "${path.module}/lambda-packages/bulk-upload.zip"
 }
 
-data "archive_file" "create_grammar_quiz_zip" {
+data "archive_file" "create_lesson_quiz_zip" {
   type        = "zip"
-  source_dir  = "${path.module}/../lambda/create-grammar-quiz"
-  output_path = "${path.module}/lambda-packages/create-grammar-quiz.zip"
+  source_dir  = "${path.module}/../lambda/create-lesson-quiz"
+  output_path = "${path.module}/lambda-packages/create-lesson-quiz.zip"
 }
 
-data "archive_file" "create_vocabulary_quiz_zip" {
+data "archive_file" "create_terms_quiz_zip" {
   type        = "zip"
-  source_dir  = "${path.module}/../lambda/create-vocabulary-quiz"
-  output_path = "${path.module}/lambda-packages/create-vocabulary-quiz.zip"
+  source_dir  = "${path.module}/../lambda/create-terms-quiz"
+  output_path = "${path.module}/lambda-packages/create-terms-quiz.zip"
 }
 
 data "archive_file" "cleanup_duplicates_zip" {
@@ -614,10 +632,16 @@ data "archive_file" "upload_image_zip" {
   output_path = "${path.module}/lambda-packages/upload-image.zip"
 }
 
+data "archive_file" "get_app_config_zip" {
+  type        = "zip"
+  source_dir  = "${path.module}/../lambda/get-app-config"
+  output_path = "${path.module}/lambda-packages/get-app-config.zip"
+}
+
 # Lambda Functions
 resource "aws_lambda_function" "translate_word" {
   filename         = data.archive_file.translate_word_zip.output_path
-  function_name    = "tilgo-translate-word"
+  function_name    = "cteach-translate-word"
   role            = aws_iam_role.lambda_role.arn
   handler         = "index.handler"
   source_code_hash = data.archive_file.translate_word_zip.output_base64sha256
@@ -638,7 +662,7 @@ resource "aws_lambda_function" "translate_word" {
 
 resource "aws_lambda_function" "batch_translate" {
   filename         = data.archive_file.batch_translate_zip.output_path
-  function_name    = "tilgo-batch-translate"
+  function_name    = "cteach-batch-translate"
   role            = aws_iam_role.lambda_role.arn
   handler         = "index.handler"
   source_code_hash = data.archive_file.batch_translate_zip.output_base64sha256
@@ -663,7 +687,7 @@ resource "aws_lambda_permission" "translate_word_api" {
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.translate_word.function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_api_gateway_rest_api.tilgo_api.execution_arn}/*/*"
+  source_arn    = "${aws_api_gateway_rest_api.cteach_api.execution_arn}/*/*"
 }
 
 resource "aws_lambda_permission" "batch_translate_api" {
@@ -671,15 +695,15 @@ resource "aws_lambda_permission" "batch_translate_api" {
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.batch_translate.function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_api_gateway_rest_api.tilgo_api.execution_arn}/*/*"
+  source_arn    = "${aws_api_gateway_rest_api.cteach_api.execution_arn}/*/*"
 }
 
-resource "aws_lambda_function" "get_grammar_lessons" {
-  filename         = data.archive_file.get_grammar_lessons_zip.output_path
-  function_name    = "tilgo-get-grammar-lessons"
+resource "aws_lambda_function" "get_lessons" {
+  filename         = data.archive_file.get_lessons_zip.output_path
+  function_name    = "cteach-get-lessons"
   role            = aws_iam_role.lambda_role.arn
   handler         = "index.handler"
-  source_code_hash = data.archive_file.get_grammar_lessons_zip.output_base64sha256
+  source_code_hash = data.archive_file.get_lessons_zip.output_base64sha256
   runtime         = "nodejs18.x"
   timeout         = 30
 
@@ -690,17 +714,17 @@ resource "aws_lambda_function" "get_grammar_lessons" {
   }
 
   tags = {
-    Name        = "Get Grammar Lessons"
+    Name        = "Get Lessons"
     Environment = var.environment
   }
 }
 
-resource "aws_lambda_function" "get_grammar_lesson" {
-  filename         = data.archive_file.get_grammar_lesson_zip.output_path
-  function_name    = "tilgo-get-grammar-lesson"
+resource "aws_lambda_function" "get_lesson" {
+  filename         = data.archive_file.get_lesson_zip.output_path
+  function_name    = "cteach-get-lesson"
   role            = aws_iam_role.lambda_role.arn
   handler         = "index.handler"
-  source_code_hash = data.archive_file.get_grammar_lesson_zip.output_base64sha256
+  source_code_hash = data.archive_file.get_lesson_zip.output_base64sha256
   runtime         = "nodejs18.x"
   timeout         = 30
 
@@ -711,17 +735,17 @@ resource "aws_lambda_function" "get_grammar_lesson" {
   }
 
   tags = {
-    Name        = "Get Grammar Lesson"
+    Name        = "Get Lesson"
     Environment = var.environment
   }
 }
 
-resource "aws_lambda_function" "get_grammar_quiz" {
-  filename         = data.archive_file.get_grammar_quiz_zip.output_path
-  function_name    = "tilgo-get-grammar-quiz"
+resource "aws_lambda_function" "get_lesson_quiz" {
+  filename         = data.archive_file.get_lesson_quiz_zip.output_path
+  function_name    = "cteach-get-lesson-quiz"
   role            = aws_iam_role.lambda_role.arn
   handler         = "index.handler"
-  source_code_hash = data.archive_file.get_grammar_quiz_zip.output_base64sha256
+  source_code_hash = data.archive_file.get_lesson_quiz_zip.output_base64sha256
   runtime         = "nodejs18.x"
   timeout         = 30
 
@@ -732,100 +756,100 @@ resource "aws_lambda_function" "get_grammar_quiz" {
   }
 
   tags = {
-    Name        = "Get Grammar Quiz"
+    Name        = "Get Lesson Quiz"
     Environment = var.environment
   }
 }
 
-resource "aws_lambda_function" "get_vocabulary_words" {
-  filename         = data.archive_file.get_vocabulary_words_zip.output_path
-  function_name    = "tilgo-get-vocabulary-words"
+resource "aws_lambda_function" "get_terms" {
+  filename         = data.archive_file.get_terms_zip.output_path
+  function_name    = "cteach-get-terms"
   role            = aws_iam_role.lambda_role.arn
   handler         = "index.handler"
-  source_code_hash = data.archive_file.get_vocabulary_words_zip.output_base64sha256
+  source_code_hash = data.archive_file.get_terms_zip.output_base64sha256
   runtime         = "nodejs18.x"
   timeout         = 30
 
   environment {
     variables = {
-      VOCABULARY_WORDS_TABLE = aws_dynamodb_table.vocabulary_words.name
+      TERMS_TABLE = aws_dynamodb_table.terms.name
     }
   }
 
   tags = {
-    Name        = "Get Vocabulary Words"
+    Name        = "Get Terms"
     Environment = var.environment
   }
 }
 
-resource "aws_lambda_function" "get_vocabulary_quiz" {
-  filename         = data.archive_file.get_vocabulary_quiz_zip.output_path
-  function_name    = "tilgo-get-vocabulary-quiz"
+resource "aws_lambda_function" "get_terms_quiz" {
+  filename         = data.archive_file.get_terms_quiz_zip.output_path
+  function_name    = "cteach-get-terms-quiz"
   role            = aws_iam_role.lambda_role.arn
   handler         = "index.handler"
-  source_code_hash = data.archive_file.get_vocabulary_quiz_zip.output_base64sha256
+  source_code_hash = data.archive_file.get_terms_quiz_zip.output_base64sha256
   runtime         = "nodejs18.x"
   timeout         = 30
 
   environment {
     variables = {
-      VOCABULARY_QUIZZES_TABLE = aws_dynamodb_table.vocabulary_quizzes.name
+      TERMS_QUIZZES_TABLE = aws_dynamodb_table.terms_quizzes.name
     }
   }
 
   tags = {
-    Name        = "Get Vocabulary Quiz"
+    Name        = "Get Terms Quiz"
     Environment = var.environment
   }
 }
 
-resource "aws_lambda_permission" "get_vocabulary_quiz_api" {
+resource "aws_lambda_permission" "get_terms_quiz_api" {
   statement_id  = "AllowExecutionFromAPIGateway"
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.get_vocabulary_quiz.function_name
+  function_name = aws_lambda_function.get_terms_quiz.function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_api_gateway_rest_api.tilgo_api.execution_arn}/*/*"
+  source_arn    = "${aws_api_gateway_rest_api.cteach_api.execution_arn}/*/*"
 }
 
-resource "aws_lambda_permission" "get_grammar_lessons_api" {
+resource "aws_lambda_permission" "get_lessons_api" {
   statement_id  = "AllowExecutionFromAPIGateway"
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.get_grammar_lessons.function_name
+  function_name = aws_lambda_function.get_lessons.function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_api_gateway_rest_api.tilgo_api.execution_arn}/*/*"
+  source_arn    = "${aws_api_gateway_rest_api.cteach_api.execution_arn}/*/*"
 }
 
-resource "aws_lambda_permission" "get_grammar_lesson_api" {
+resource "aws_lambda_permission" "get_lesson_api" {
   statement_id  = "AllowExecutionFromAPIGateway"
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.get_grammar_lesson.function_name
+  function_name = aws_lambda_function.get_lesson.function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_api_gateway_rest_api.tilgo_api.execution_arn}/*/*"
+  source_arn    = "${aws_api_gateway_rest_api.cteach_api.execution_arn}/*/*"
 }
 
-resource "aws_lambda_permission" "get_grammar_quiz_api" {
+resource "aws_lambda_permission" "get_lesson_quiz_api" {
   statement_id  = "AllowExecutionFromAPIGateway"
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.get_grammar_quiz.function_name
+  function_name = aws_lambda_function.get_lesson_quiz.function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_api_gateway_rest_api.tilgo_api.execution_arn}/*/*"
+  source_arn    = "${aws_api_gateway_rest_api.cteach_api.execution_arn}/*/*"
 }
 
-resource "aws_lambda_permission" "get_vocabulary_words_api" {
+resource "aws_lambda_permission" "get_terms_api" {
   statement_id  = "AllowExecutionFromAPIGateway"
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.get_vocabulary_words.function_name
+  function_name = aws_lambda_function.get_terms.function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_api_gateway_rest_api.tilgo_api.execution_arn}/*/*"
+  source_arn    = "${aws_api_gateway_rest_api.cteach_api.execution_arn}/*/*"
 }
 
 # Admin Lambda Functions
-resource "aws_lambda_function" "create_grammar_lesson" {
-  filename         = data.archive_file.create_grammar_lesson_zip.output_path
-  function_name    = "tilgo-create-grammar-lesson"
+resource "aws_lambda_function" "create_lesson" {
+  filename         = data.archive_file.create_lesson_zip.output_path
+  function_name    = "cteach-create-lesson"
   role            = aws_iam_role.lambda_role.arn
   handler         = "index.handler"
-  source_code_hash = data.archive_file.create_grammar_lesson_zip.output_base64sha256
+  source_code_hash = data.archive_file.create_lesson_zip.output_base64sha256
   runtime         = "nodejs18.x"
   timeout         = 30
 
@@ -836,35 +860,35 @@ resource "aws_lambda_function" "create_grammar_lesson" {
   }
 
   tags = {
-    Name        = "Create Grammar Lesson"
+    Name        = "Create Lesson"
     Environment = var.environment
   }
 }
 
-resource "aws_lambda_function" "create_vocabulary_word" {
-  filename         = data.archive_file.create_vocabulary_word_zip.output_path
-  function_name    = "tilgo-create-vocabulary-word"
+resource "aws_lambda_function" "create_term" {
+  filename         = data.archive_file.create_term_zip.output_path
+  function_name    = "cteach-create-term"
   role            = aws_iam_role.lambda_role.arn
   handler         = "index.handler"
-  source_code_hash = data.archive_file.create_vocabulary_word_zip.output_base64sha256
+  source_code_hash = data.archive_file.create_term_zip.output_base64sha256
   runtime         = "nodejs18.x"
   timeout         = 30
 
   environment {
     variables = {
-      VOCABULARY_WORDS_TABLE = aws_dynamodb_table.vocabulary_words.name
+      TERMS_TABLE = aws_dynamodb_table.terms.name
     }
   }
 
   tags = {
-    Name        = "Create Vocabulary Word"
+    Name        = "Create Term"
     Environment = var.environment
   }
 }
 
 resource "aws_lambda_function" "bulk_upload" {
   filename         = data.archive_file.bulk_upload_zip.output_path
-  function_name    = "tilgo-bulk-upload"
+  function_name    = "cteach-bulk-upload"
   role            = aws_iam_role.lambda_role.arn
   handler         = "index.handler"
   source_code_hash = data.archive_file.bulk_upload_zip.output_base64sha256
@@ -874,7 +898,7 @@ resource "aws_lambda_function" "bulk_upload" {
   environment {
     variables = {
       GRAMMAR_LESSONS_TABLE = aws_dynamodb_table.grammar_lessons.name
-      VOCABULARY_WORDS_TABLE = aws_dynamodb_table.vocabulary_words.name
+      TERMS_TABLE = aws_dynamodb_table.terms.name
     }
   }
 
@@ -884,20 +908,20 @@ resource "aws_lambda_function" "bulk_upload" {
   }
 }
 
-resource "aws_lambda_permission" "create_grammar_lesson_api" {
+resource "aws_lambda_permission" "create_lesson_api" {
   statement_id  = "AllowExecutionFromAPIGateway"
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.create_grammar_lesson.function_name
+  function_name = aws_lambda_function.create_lesson.function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_api_gateway_rest_api.tilgo_api.execution_arn}/*/*"
+  source_arn    = "${aws_api_gateway_rest_api.cteach_api.execution_arn}/*/*"
 }
 
-resource "aws_lambda_permission" "create_vocabulary_word_api" {
+resource "aws_lambda_permission" "create_term_api" {
   statement_id  = "AllowExecutionFromAPIGateway"
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.create_vocabulary_word.function_name
+  function_name = aws_lambda_function.create_term.function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_api_gateway_rest_api.tilgo_api.execution_arn}/*/*"
+  source_arn    = "${aws_api_gateway_rest_api.cteach_api.execution_arn}/*/*"
 }
 
 resource "aws_lambda_permission" "bulk_upload_api" {
@@ -905,16 +929,16 @@ resource "aws_lambda_permission" "bulk_upload_api" {
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.bulk_upload.function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_api_gateway_rest_api.tilgo_api.execution_arn}/*/*"
+  source_arn    = "${aws_api_gateway_rest_api.cteach_api.execution_arn}/*/*"
 }
 
 # Quiz Lambda Functions
-resource "aws_lambda_function" "create_grammar_quiz" {
-  filename         = data.archive_file.create_grammar_quiz_zip.output_path
-  function_name    = "tilgo-create-grammar-quiz"
+resource "aws_lambda_function" "create_lesson_quiz" {
+  filename         = data.archive_file.create_lesson_quiz_zip.output_path
+  function_name    = "cteach-create-lesson-quiz"
   role            = aws_iam_role.lambda_role.arn
   handler         = "index.handler"
-  source_code_hash = data.archive_file.create_grammar_quiz_zip.output_base64sha256
+  source_code_hash = data.archive_file.create_lesson_quiz_zip.output_base64sha256
   runtime         = "nodejs18.x"
   timeout         = 30
 
@@ -925,35 +949,35 @@ resource "aws_lambda_function" "create_grammar_quiz" {
   }
 
   tags = {
-    Name        = "Create Grammar Quiz"
+    Name        = "Create Lesson Quiz"
     Environment = var.environment
   }
 }
 
-resource "aws_lambda_function" "create_vocabulary_quiz" {
-  filename         = data.archive_file.create_vocabulary_quiz_zip.output_path
-  function_name    = "tilgo-create-vocabulary-quiz"
+resource "aws_lambda_function" "create_terms_quiz" {
+  filename         = data.archive_file.create_terms_quiz_zip.output_path
+  function_name    = "cteach-create-terms-quiz"
   role            = aws_iam_role.lambda_role.arn
   handler         = "index.handler"
-  source_code_hash = data.archive_file.create_vocabulary_quiz_zip.output_base64sha256
+  source_code_hash = data.archive_file.create_terms_quiz_zip.output_base64sha256
   runtime         = "nodejs18.x"
   timeout         = 30
 
   environment {
     variables = {
-      VOCABULARY_QUIZZES_TABLE = aws_dynamodb_table.vocabulary_quizzes.name
+      TERMS_QUIZZES_TABLE = aws_dynamodb_table.terms_quizzes.name
     }
   }
 
   tags = {
-    Name        = "Create Vocabulary Quiz"
+    Name        = "Create Terms Quiz"
     Environment = var.environment
   }
 }
 
 resource "aws_lambda_function" "cleanup_duplicates" {
   filename         = data.archive_file.cleanup_duplicates_zip.output_path
-  function_name    = "tilgo-cleanup-duplicates"
+  function_name    = "cteach-cleanup-duplicates"
   role            = aws_iam_role.lambda_role.arn
   handler         = "index.handler"
   source_code_hash = data.archive_file.cleanup_duplicates_zip.output_base64sha256
@@ -963,7 +987,7 @@ resource "aws_lambda_function" "cleanup_duplicates" {
   environment {
     variables = {
       GRAMMAR_LESSONS_TABLE = aws_dynamodb_table.grammar_lessons.name
-      VOCABULARY_WORDS_TABLE = aws_dynamodb_table.vocabulary_words.name
+      TERMS_TABLE = aws_dynamodb_table.terms.name
     }
   }
 
@@ -975,7 +999,7 @@ resource "aws_lambda_function" "cleanup_duplicates" {
 
 resource "aws_lambda_function" "manage_levels" {
   filename         = data.archive_file.manage_levels_zip.output_path
-  function_name    = "tilgo-manage-levels"
+  function_name    = "cteach-manage-levels"
   role            = aws_iam_role.lambda_role.arn
   handler         = "index.handler"
   source_code_hash = data.archive_file.manage_levels_zip.output_base64sha256
@@ -996,7 +1020,7 @@ resource "aws_lambda_function" "manage_levels" {
 
 resource "aws_lambda_function" "manage_categories" {
   filename         = data.archive_file.manage_categories_zip.output_path
-  function_name    = "tilgo-manage-categories"
+  function_name    = "cteach-manage-categories"
   role            = aws_iam_role.lambda_role.arn
   handler         = "index.handler"
   source_code_hash = data.archive_file.manage_categories_zip.output_base64sha256
@@ -1017,7 +1041,7 @@ resource "aws_lambda_function" "manage_categories" {
 
 resource "aws_lambda_function" "upload_image" {
   filename         = data.archive_file.upload_image_zip.output_path
-  function_name    = "tilgo-upload-image"
+  function_name    = "cteach-upload-image"
   role            = aws_iam_role.lambda_role.arn
   handler         = "index.handler"
   source_code_hash = data.archive_file.upload_image_zip.output_base64sha256
@@ -1026,7 +1050,7 @@ resource "aws_lambda_function" "upload_image" {
 
   environment {
     variables = {
-      IMAGES_BUCKET = aws_s3_bucket.tilgo_images.id
+      IMAGES_BUCKET = aws_s3_bucket.cteach_images.id
       AWS_REGION    = var.aws_region
     }
   }
@@ -1037,12 +1061,33 @@ resource "aws_lambda_function" "upload_image" {
   }
 }
 
+resource "aws_lambda_function" "get_app_config" {
+  filename         = data.archive_file.get_app_config_zip.output_path
+  function_name    = "cteach-get-app-config"
+  role            = aws_iam_role.lambda_role.arn
+  handler         = "index.handler"
+  source_code_hash = data.archive_file.get_app_config_zip.output_base64sha256
+  runtime         = "nodejs18.x"
+  timeout         = 30
+
+  environment {
+    variables = {
+      APP_CONFIG_TABLE = aws_dynamodb_table.app_config.name
+    }
+  }
+
+  tags = {
+    Name        = "Get App Config"
+    Environment = var.environment
+  }
+}
+
 resource "aws_lambda_permission" "cleanup_duplicates_api" {
   statement_id  = "AllowExecutionFromAPIGateway"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.cleanup_duplicates.function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_api_gateway_rest_api.tilgo_api.execution_arn}/*/*"
+  source_arn    = "${aws_api_gateway_rest_api.cteach_api.execution_arn}/*/*"
 }
 
 resource "aws_lambda_permission" "manage_levels_api" {
@@ -1050,7 +1095,7 @@ resource "aws_lambda_permission" "manage_levels_api" {
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.manage_levels.function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_api_gateway_rest_api.tilgo_api.execution_arn}/*/*"
+  source_arn    = "${aws_api_gateway_rest_api.cteach_api.execution_arn}/*/*"
 }
 
 resource "aws_lambda_permission" "manage_categories_api" {
@@ -1058,7 +1103,7 @@ resource "aws_lambda_permission" "manage_categories_api" {
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.manage_categories.function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_api_gateway_rest_api.tilgo_api.execution_arn}/*/*"
+  source_arn    = "${aws_api_gateway_rest_api.cteach_api.execution_arn}/*/*"
 }
 
 resource "aws_lambda_permission" "upload_image_api" {
@@ -1066,28 +1111,36 @@ resource "aws_lambda_permission" "upload_image_api" {
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.upload_image.function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_api_gateway_rest_api.tilgo_api.execution_arn}/*/*"
+  source_arn    = "${aws_api_gateway_rest_api.cteach_api.execution_arn}/*/*"
 }
 
-resource "aws_lambda_permission" "create_grammar_quiz_api" {
+resource "aws_lambda_permission" "get_app_config_api" {
   statement_id  = "AllowExecutionFromAPIGateway"
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.create_grammar_quiz.function_name
+  function_name = aws_lambda_function.get_app_config.function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_api_gateway_rest_api.tilgo_api.execution_arn}/*/*"
+  source_arn    = "${aws_api_gateway_rest_api.cteach_api.execution_arn}/*/*"
 }
 
-resource "aws_lambda_permission" "create_vocabulary_quiz_api" {
+resource "aws_lambda_permission" "create_lesson_quiz_api" {
   statement_id  = "AllowExecutionFromAPIGateway"
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.create_vocabulary_quiz.function_name
+  function_name = aws_lambda_function.create_lesson_quiz.function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_api_gateway_rest_api.tilgo_api.execution_arn}/*/*"
+  source_arn    = "${aws_api_gateway_rest_api.cteach_api.execution_arn}/*/*"
+}
+
+resource "aws_lambda_permission" "create_terms_quiz_api" {
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.create_terms_quiz.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.cteach_api.execution_arn}/*/*"
 }
 
 # API Gateway
-resource "aws_api_gateway_rest_api" "tilgo_api" {
-  name        = "tilgo-api"
+resource "aws_api_gateway_rest_api" "cteach_api" {
+  name        = "cteach-api"
   description = "API for cteach Learning Platform"
 
   endpoint_configuration {
@@ -1095,36 +1148,37 @@ resource "aws_api_gateway_rest_api" "tilgo_api" {
   }
 }
 
-resource "aws_api_gateway_deployment" "tilgo_api" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+resource "aws_api_gateway_deployment" "cteach_api" {
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
 
   triggers = {
     redeployment = sha1(jsonencode([
-      aws_api_gateway_rest_api.tilgo_api.body,
+      aws_api_gateway_rest_api.cteach_api.body,
       aws_api_gateway_resource.grammar.id,
-      aws_api_gateway_resource.vocabulary.id,
+      aws_api_gateway_resource.terms.id,
       aws_api_gateway_resource.translate.id,
       aws_api_gateway_resource.admin.id,
       aws_api_gateway_resource.admin_grammar_quiz.id,
-      aws_api_gateway_resource.admin_vocabulary_quiz.id,
+      aws_api_gateway_resource.admin_terms_quiz.id,
       aws_api_gateway_resource.admin_cleanup.id,
       aws_api_gateway_resource.admin_levels.id,
       aws_api_gateway_resource.admin_level.id,
       aws_api_gateway_resource.admin_categories.id,
       aws_api_gateway_resource.admin_category.id,
       aws_api_gateway_resource.admin_upload_image.id,
+      aws_api_gateway_resource.app_config.id,
       aws_api_gateway_method.translate_word_get.id,
       aws_api_gateway_method.translate_batch_post.id,
       aws_api_gateway_method.grammar_lessons_get.id,
       aws_api_gateway_method.grammar_lesson_get.id,
       aws_api_gateway_method.grammar_quiz_get.id,
-      aws_api_gateway_method.vocabulary_words_get.id,
-      aws_api_gateway_method.vocabulary_quiz_get.id,
+      aws_api_gateway_method.terms_get.id,
+      aws_api_gateway_method.terms_quiz_get.id,
       aws_api_gateway_method.admin_grammar_post.id,
-      aws_api_gateway_method.admin_vocabulary_post.id,
+      aws_api_gateway_method.admin_terms_post.id,
       aws_api_gateway_method.admin_bulk_post.id,
       aws_api_gateway_method.admin_grammar_quiz_post.id,
-      aws_api_gateway_method.admin_vocabulary_quiz_post.id,
+      aws_api_gateway_method.admin_terms_quiz_post.id,
       aws_api_gateway_method.admin_cleanup_post.id,
       aws_api_gateway_method.admin_levels_get.id,
       aws_api_gateway_method.admin_levels_post.id,
@@ -1135,22 +1189,25 @@ resource "aws_api_gateway_deployment" "tilgo_api" {
       aws_api_gateway_method.admin_category_put.id,
       aws_api_gateway_method.admin_category_delete.id,
       aws_api_gateway_method.admin_upload_image_post.id,
+      aws_api_gateway_method.app_config_get.id,
+      aws_api_gateway_method.app_config_post.id,
       aws_lambda_function.translate_word.id,
       aws_lambda_function.batch_translate.id,
-      aws_lambda_function.get_grammar_lessons.id,
-      aws_lambda_function.get_grammar_lesson.id,
-      aws_lambda_function.get_grammar_quiz.id,
-      aws_lambda_function.get_vocabulary_words.id,
-      aws_lambda_function.get_vocabulary_quiz.id,
-      aws_lambda_function.create_grammar_lesson.id,
-      aws_lambda_function.create_vocabulary_word.id,
+      aws_lambda_function.get_lessons.id,
+      aws_lambda_function.get_lesson.id,
+      aws_lambda_function.get_lesson_quiz.id,
+      aws_lambda_function.get_terms.id,
+      aws_lambda_function.get_terms_quiz.id,
+      aws_lambda_function.create_lesson.id,
+      aws_lambda_function.create_term.id,
       aws_lambda_function.bulk_upload.id,
-      aws_lambda_function.create_grammar_quiz.id,
-      aws_lambda_function.create_vocabulary_quiz.id,
+      aws_lambda_function.create_lesson_quiz.id,
+      aws_lambda_function.create_terms_quiz.id,
       aws_lambda_function.cleanup_duplicates.id,
       aws_lambda_function.manage_levels.id,
       aws_lambda_function.manage_categories.id,
       aws_lambda_function.upload_image.id,
+      aws_lambda_function.get_app_config.id,
     ]))
   }
 
@@ -1159,169 +1216,175 @@ resource "aws_api_gateway_deployment" "tilgo_api" {
   }
 }
 
-resource "aws_api_gateway_stage" "tilgo_api" {
-  deployment_id = aws_api_gateway_deployment.tilgo_api.id
-  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+resource "aws_api_gateway_stage" "cteach_api" {
+  deployment_id = aws_api_gateway_deployment.cteach_api.id
+  rest_api_id   = aws_api_gateway_rest_api.cteach_api.id
   stage_name    = var.environment
 }
 
 # API Gateway Resources
 resource "aws_api_gateway_resource" "grammar" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
-  parent_id   = aws_api_gateway_rest_api.tilgo_api.root_resource_id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
+  parent_id   = aws_api_gateway_rest_api.cteach_api.root_resource_id
   path_part   = "grammar"
 }
 
 resource "aws_api_gateway_resource" "grammar_lessons" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   parent_id   = aws_api_gateway_resource.grammar.id
   path_part   = "lessons"
 }
 
 resource "aws_api_gateway_resource" "grammar_lesson" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   parent_id   = aws_api_gateway_resource.grammar_lessons.id
   path_part   = "{lessonId}"
 }
 
 resource "aws_api_gateway_resource" "grammar_quizzes" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   parent_id   = aws_api_gateway_resource.grammar.id
   path_part   = "quizzes"
 }
 
 resource "aws_api_gateway_resource" "grammar_quiz" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   parent_id   = aws_api_gateway_resource.grammar_quizzes.id
   path_part   = "{quizId}"
 }
 
-resource "aws_api_gateway_resource" "vocabulary" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
-  parent_id   = aws_api_gateway_rest_api.tilgo_api.root_resource_id
-  path_part   = "vocabulary"
+resource "aws_api_gateway_resource" "terms" {
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
+  parent_id   = aws_api_gateway_rest_api.cteach_api.root_resource_id
+  path_part   = "terms"
 }
 
-resource "aws_api_gateway_resource" "vocabulary_words" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
-  parent_id   = aws_api_gateway_resource.vocabulary.id
-  path_part   = "words"
+resource "aws_api_gateway_resource" "terms_list" {
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
+  parent_id   = aws_api_gateway_resource.terms.id
+  path_part   = "list"
 }
 
-resource "aws_api_gateway_resource" "vocabulary_quizzes" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
-  parent_id   = aws_api_gateway_resource.vocabulary.id
+resource "aws_api_gateway_resource" "terms_quizzes" {
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
+  parent_id   = aws_api_gateway_resource.terms.id
   path_part   = "quizzes"
 }
 
-resource "aws_api_gateway_resource" "vocabulary_quiz" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
-  parent_id   = aws_api_gateway_resource.vocabulary_quizzes.id
+resource "aws_api_gateway_resource" "terms_quiz" {
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
+  parent_id   = aws_api_gateway_resource.terms_quizzes.id
   path_part   = "{quizId}"
 }
 
 # Translate endpoint
 resource "aws_api_gateway_resource" "translate" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
-  parent_id   = aws_api_gateway_rest_api.tilgo_api.root_resource_id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
+  parent_id   = aws_api_gateway_rest_api.cteach_api.root_resource_id
   path_part   = "translate"
 }
 
 resource "aws_api_gateway_resource" "translate_word" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   parent_id   = aws_api_gateway_resource.translate.id
   path_part   = "{word}"
 }
 
 resource "aws_api_gateway_resource" "translate_batch" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   parent_id   = aws_api_gateway_resource.translate.id
   path_part   = "batch"
 }
 
 # Admin API Resources
 resource "aws_api_gateway_resource" "admin" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
-  parent_id   = aws_api_gateway_rest_api.tilgo_api.root_resource_id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
+  parent_id   = aws_api_gateway_rest_api.cteach_api.root_resource_id
   path_part   = "admin"
 }
 
 resource "aws_api_gateway_resource" "admin_grammar" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   parent_id   = aws_api_gateway_resource.admin.id
   path_part   = "grammar"
 }
 
-resource "aws_api_gateway_resource" "admin_vocabulary" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+resource "aws_api_gateway_resource" "admin_terms" {
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   parent_id   = aws_api_gateway_resource.admin.id
-  path_part   = "vocabulary"
+  path_part   = "terms"
 }
 
 resource "aws_api_gateway_resource" "admin_bulk" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   parent_id   = aws_api_gateway_resource.admin.id
   path_part   = "bulk"
 }
 
 resource "aws_api_gateway_resource" "admin_grammar_quiz" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   parent_id   = aws_api_gateway_resource.admin_grammar.id
   path_part   = "quiz"
 }
 
-resource "aws_api_gateway_resource" "admin_vocabulary_quiz" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
-  parent_id   = aws_api_gateway_resource.admin_vocabulary.id
+resource "aws_api_gateway_resource" "admin_terms_quiz" {
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
+  parent_id   = aws_api_gateway_resource.admin_terms.id
   path_part   = "quiz"
 }
 
 resource "aws_api_gateway_resource" "admin_cleanup" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   parent_id   = aws_api_gateway_resource.admin.id
   path_part   = "cleanup"
 }
 
 resource "aws_api_gateway_resource" "admin_levels" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   parent_id   = aws_api_gateway_resource.admin.id
   path_part   = "levels"
 }
 
 resource "aws_api_gateway_resource" "admin_level" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   parent_id   = aws_api_gateway_resource.admin_levels.id
   path_part   = "{levelId}"
 }
 
 resource "aws_api_gateway_resource" "admin_categories" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   parent_id   = aws_api_gateway_resource.admin.id
   path_part   = "categories"
 }
 
 resource "aws_api_gateway_resource" "admin_category" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   parent_id   = aws_api_gateway_resource.admin_categories.id
   path_part   = "{categoryId}"
 }
 
 resource "aws_api_gateway_resource" "admin_upload_image" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   parent_id   = aws_api_gateway_resource.admin.id
   path_part   = "upload-image"
 }
 
+resource "aws_api_gateway_resource" "app_config" {
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
+  parent_id   = aws_api_gateway_rest_api.cteach_api.root_resource_id
+  path_part   = "config"
+}
+
 # CORS Configuration
 resource "aws_api_gateway_method" "grammar_lessons_options" {
-  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id   = aws_api_gateway_rest_api.cteach_api.id
   resource_id   = aws_api_gateway_resource.grammar_lessons.id
   http_method   = "OPTIONS"
   authorization = "NONE"
 }
 
 resource "aws_api_gateway_integration" "grammar_lessons_options" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   resource_id = aws_api_gateway_resource.grammar_lessons.id
   http_method = aws_api_gateway_method.grammar_lessons_options.http_method
   type        = "MOCK"
@@ -1331,7 +1394,7 @@ resource "aws_api_gateway_integration" "grammar_lessons_options" {
 }
 
 resource "aws_api_gateway_method_response" "grammar_lessons_options" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   resource_id = aws_api_gateway_resource.grammar_lessons.id
   http_method = aws_api_gateway_method.grammar_lessons_options.http_method
   status_code = "200"
@@ -1343,7 +1406,7 @@ resource "aws_api_gateway_method_response" "grammar_lessons_options" {
 }
 
 resource "aws_api_gateway_integration_response" "grammar_lessons_options" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   resource_id = aws_api_gateway_resource.grammar_lessons.id
   http_method = aws_api_gateway_method.grammar_lessons_options.http_method
   status_code = aws_api_gateway_method_response.grammar_lessons_options.status_code
@@ -1356,47 +1419,47 @@ resource "aws_api_gateway_integration_response" "grammar_lessons_options" {
 
 # Grammar Lessons GET
 resource "aws_api_gateway_method" "grammar_lessons_get" {
-  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id   = aws_api_gateway_rest_api.cteach_api.id
   resource_id   = aws_api_gateway_resource.grammar_lessons.id
   http_method   = "GET"
   authorization = "NONE"
 }
 
 resource "aws_api_gateway_integration" "grammar_lessons_get" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   resource_id = aws_api_gateway_resource.grammar_lessons.id
   http_method = aws_api_gateway_method.grammar_lessons_get.http_method
   integration_http_method = "POST"
   type                    = "AWS_PROXY"
-  uri                     = aws_lambda_function.get_grammar_lessons.invoke_arn
+  uri                     = aws_lambda_function.get_lessons.invoke_arn
 }
 
 # Grammar Lesson GET
 resource "aws_api_gateway_method" "grammar_lesson_get" {
-  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id   = aws_api_gateway_rest_api.cteach_api.id
   resource_id   = aws_api_gateway_resource.grammar_lesson.id
   http_method   = "GET"
   authorization = "NONE"
 }
 
 resource "aws_api_gateway_integration" "grammar_lesson_get" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   resource_id = aws_api_gateway_resource.grammar_lesson.id
   http_method = aws_api_gateway_method.grammar_lesson_get.http_method
   integration_http_method = "POST"
   type                    = "AWS_PROXY"
-  uri                     = aws_lambda_function.get_grammar_lesson.invoke_arn
+  uri                     = aws_lambda_function.get_lesson.invoke_arn
 }
 
 resource "aws_api_gateway_method" "grammar_lesson_options" {
-  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id   = aws_api_gateway_rest_api.cteach_api.id
   resource_id   = aws_api_gateway_resource.grammar_lesson.id
   http_method   = "OPTIONS"
   authorization = "NONE"
 }
 
 resource "aws_api_gateway_integration" "grammar_lesson_options" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   resource_id = aws_api_gateway_resource.grammar_lesson.id
   http_method = aws_api_gateway_method.grammar_lesson_options.http_method
   type        = "MOCK"
@@ -1406,7 +1469,7 @@ resource "aws_api_gateway_integration" "grammar_lesson_options" {
 }
 
 resource "aws_api_gateway_method_response" "grammar_lesson_options" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   resource_id = aws_api_gateway_resource.grammar_lesson.id
   http_method = aws_api_gateway_method.grammar_lesson_options.http_method
   status_code = "200"
@@ -1418,7 +1481,7 @@ resource "aws_api_gateway_method_response" "grammar_lesson_options" {
 }
 
 resource "aws_api_gateway_integration_response" "grammar_lesson_options" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   resource_id = aws_api_gateway_resource.grammar_lesson.id
   http_method = aws_api_gateway_method.grammar_lesson_options.http_method
   status_code = aws_api_gateway_method_response.grammar_lesson_options.status_code
@@ -1431,30 +1494,30 @@ resource "aws_api_gateway_integration_response" "grammar_lesson_options" {
 
 # Grammar Quiz GET
 resource "aws_api_gateway_method" "grammar_quiz_get" {
-  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id   = aws_api_gateway_rest_api.cteach_api.id
   resource_id   = aws_api_gateway_resource.grammar_quiz.id
   http_method   = "GET"
   authorization = "NONE"
 }
 
 resource "aws_api_gateway_integration" "grammar_quiz_get" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   resource_id = aws_api_gateway_resource.grammar_quiz.id
   http_method = aws_api_gateway_method.grammar_quiz_get.http_method
   integration_http_method = "POST"
   type                    = "AWS_PROXY"
-  uri                     = aws_lambda_function.get_grammar_quiz.invoke_arn
+  uri                     = aws_lambda_function.get_lesson_quiz.invoke_arn
 }
 
 resource "aws_api_gateway_method" "grammar_quiz_options" {
-  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id   = aws_api_gateway_rest_api.cteach_api.id
   resource_id   = aws_api_gateway_resource.grammar_quiz.id
   http_method   = "OPTIONS"
   authorization = "NONE"
 }
 
 resource "aws_api_gateway_integration" "grammar_quiz_options" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   resource_id = aws_api_gateway_resource.grammar_quiz.id
   http_method = aws_api_gateway_method.grammar_quiz_options.http_method
   type        = "MOCK"
@@ -1464,7 +1527,7 @@ resource "aws_api_gateway_integration" "grammar_quiz_options" {
 }
 
 resource "aws_api_gateway_method_response" "grammar_quiz_options" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   resource_id = aws_api_gateway_resource.grammar_quiz.id
   http_method = aws_api_gateway_method.grammar_quiz_options.http_method
   status_code = "200"
@@ -1476,7 +1539,7 @@ resource "aws_api_gateway_method_response" "grammar_quiz_options" {
 }
 
 resource "aws_api_gateway_integration_response" "grammar_quiz_options" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   resource_id = aws_api_gateway_resource.grammar_quiz.id
   http_method = aws_api_gateway_method.grammar_quiz_options.http_method
   status_code = aws_api_gateway_method_response.grammar_quiz_options.status_code
@@ -1487,44 +1550,44 @@ resource "aws_api_gateway_integration_response" "grammar_quiz_options" {
   }
 }
 
-# Vocabulary Words GET
-resource "aws_api_gateway_method" "vocabulary_words_get" {
-  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
-  resource_id   = aws_api_gateway_resource.vocabulary_words.id
+# Terms GET
+resource "aws_api_gateway_method" "terms_get" {
+  rest_api_id   = aws_api_gateway_rest_api.cteach_api.id
+  resource_id   = aws_api_gateway_resource.terms.id
   http_method   = "GET"
   authorization = "NONE"
 }
 
-resource "aws_api_gateway_integration" "vocabulary_words_get" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
-  resource_id = aws_api_gateway_resource.vocabulary_words.id
-  http_method = aws_api_gateway_method.vocabulary_words_get.http_method
+resource "aws_api_gateway_integration" "terms_get" {
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
+  resource_id = aws_api_gateway_resource.terms.id
+  http_method = aws_api_gateway_method.terms_get.http_method
   integration_http_method = "POST"
   type                    = "AWS_PROXY"
-  uri                     = aws_lambda_function.get_vocabulary_words.invoke_arn
+  uri                     = aws_lambda_function.get_terms.invoke_arn
 }
 
-resource "aws_api_gateway_method" "vocabulary_words_options" {
-  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
-  resource_id   = aws_api_gateway_resource.vocabulary_words.id
+resource "aws_api_gateway_method" "terms_options" {
+  rest_api_id   = aws_api_gateway_rest_api.cteach_api.id
+  resource_id   = aws_api_gateway_resource.terms.id
   http_method   = "OPTIONS"
   authorization = "NONE"
 }
 
-resource "aws_api_gateway_integration" "vocabulary_words_options" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
-  resource_id = aws_api_gateway_resource.vocabulary_words.id
-  http_method = aws_api_gateway_method.vocabulary_words_options.http_method
+resource "aws_api_gateway_integration" "terms_options" {
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
+  resource_id = aws_api_gateway_resource.terms.id
+  http_method = aws_api_gateway_method.terms_options.http_method
   type        = "MOCK"
   request_templates = {
     "application/json" = "{\"statusCode\": 200}"
   }
 }
 
-resource "aws_api_gateway_method_response" "vocabulary_words_options" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
-  resource_id = aws_api_gateway_resource.vocabulary_words.id
-  http_method = aws_api_gateway_method.vocabulary_words_options.http_method
+resource "aws_api_gateway_method_response" "terms_options" {
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
+  resource_id = aws_api_gateway_resource.terms.id
+  http_method = aws_api_gateway_method.terms_options.http_method
   status_code = "200"
   response_parameters = {
     "method.response.header.Access-Control-Allow-Headers" = true
@@ -1533,11 +1596,11 @@ resource "aws_api_gateway_method_response" "vocabulary_words_options" {
   }
 }
 
-resource "aws_api_gateway_integration_response" "vocabulary_words_options" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
-  resource_id = aws_api_gateway_resource.vocabulary_words.id
-  http_method = aws_api_gateway_method.vocabulary_words_options.http_method
-  status_code = aws_api_gateway_method_response.vocabulary_words_options.status_code
+resource "aws_api_gateway_integration_response" "terms_options" {
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
+  resource_id = aws_api_gateway_resource.terms.id
+  http_method = aws_api_gateway_method.terms_options.http_method
+  status_code = aws_api_gateway_method_response.terms_options.status_code
   response_parameters = {
     "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
     "method.response.header.Access-Control-Allow-Methods" = "'GET,OPTIONS'"
@@ -1545,44 +1608,44 @@ resource "aws_api_gateway_integration_response" "vocabulary_words_options" {
   }
 }
 
-# Vocabulary Quiz GET
-resource "aws_api_gateway_method" "vocabulary_quiz_get" {
-  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
-  resource_id   = aws_api_gateway_resource.vocabulary_quiz.id
+# Terms Quiz GET
+resource "aws_api_gateway_method" "terms_quiz_get" {
+  rest_api_id   = aws_api_gateway_rest_api.cteach_api.id
+  resource_id   = aws_api_gateway_resource.terms_quiz.id
   http_method   = "GET"
   authorization = "NONE"
 }
 
-resource "aws_api_gateway_integration" "vocabulary_quiz_get" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
-  resource_id = aws_api_gateway_resource.vocabulary_quiz.id
-  http_method = aws_api_gateway_method.vocabulary_quiz_get.http_method
+resource "aws_api_gateway_integration" "terms_quiz_get" {
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
+  resource_id = aws_api_gateway_resource.terms_quiz.id
+  http_method = aws_api_gateway_method.terms_quiz_get.http_method
   integration_http_method = "POST"
   type                    = "AWS_PROXY"
-  uri                     = aws_lambda_function.get_vocabulary_quiz.invoke_arn
+  uri                     = aws_lambda_function.get_terms_quiz.invoke_arn
 }
 
-resource "aws_api_gateway_method" "vocabulary_quiz_options" {
-  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
-  resource_id   = aws_api_gateway_resource.vocabulary_quiz.id
+resource "aws_api_gateway_method" "terms_quiz_options" {
+  rest_api_id   = aws_api_gateway_rest_api.cteach_api.id
+  resource_id   = aws_api_gateway_resource.terms_quiz.id
   http_method   = "OPTIONS"
   authorization = "NONE"
 }
 
-resource "aws_api_gateway_integration" "vocabulary_quiz_options" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
-  resource_id = aws_api_gateway_resource.vocabulary_quiz.id
-  http_method = aws_api_gateway_method.vocabulary_quiz_options.http_method
+resource "aws_api_gateway_integration" "terms_quiz_options" {
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
+  resource_id = aws_api_gateway_resource.terms_quiz.id
+  http_method = aws_api_gateway_method.terms_quiz_options.http_method
   type        = "MOCK"
   request_templates = {
     "application/json" = "{\"statusCode\": 200}"
   }
 }
 
-resource "aws_api_gateway_method_response" "vocabulary_quiz_options" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
-  resource_id = aws_api_gateway_resource.vocabulary_quiz.id
-  http_method = aws_api_gateway_method.vocabulary_quiz_options.http_method
+resource "aws_api_gateway_method_response" "terms_quiz_options" {
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
+  resource_id = aws_api_gateway_resource.terms_quiz.id
+  http_method = aws_api_gateway_method.terms_quiz_options.http_method
   status_code = "200"
   response_parameters = {
     "method.response.header.Access-Control-Allow-Headers" = true
@@ -1591,11 +1654,11 @@ resource "aws_api_gateway_method_response" "vocabulary_quiz_options" {
   }
 }
 
-resource "aws_api_gateway_integration_response" "vocabulary_quiz_options" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
-  resource_id = aws_api_gateway_resource.vocabulary_quiz.id
-  http_method = aws_api_gateway_method.vocabulary_quiz_options.http_method
-  status_code = aws_api_gateway_method_response.vocabulary_quiz_options.status_code
+resource "aws_api_gateway_integration_response" "terms_quiz_options" {
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
+  resource_id = aws_api_gateway_resource.terms_quiz.id
+  http_method = aws_api_gateway_method.terms_quiz_options.http_method
+  status_code = aws_api_gateway_method_response.terms_quiz_options.status_code
   response_parameters = {
     "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
     "method.response.header.Access-Control-Allow-Methods" = "'GET,OPTIONS'"
@@ -1605,14 +1668,14 @@ resource "aws_api_gateway_integration_response" "vocabulary_quiz_options" {
 
 # Translate Word Endpoint
 resource "aws_api_gateway_method" "translate_word_get" {
-  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id   = aws_api_gateway_rest_api.cteach_api.id
   resource_id   = aws_api_gateway_resource.translate_word.id
   http_method   = "GET"
   authorization = "NONE"
 }
 
 resource "aws_api_gateway_integration" "translate_word_get" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   resource_id = aws_api_gateway_resource.translate_word.id
   http_method = aws_api_gateway_method.translate_word_get.http_method
   integration_http_method = "POST"
@@ -1621,14 +1684,14 @@ resource "aws_api_gateway_integration" "translate_word_get" {
 }
 
 resource "aws_api_gateway_method" "translate_word_options" {
-  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id   = aws_api_gateway_rest_api.cteach_api.id
   resource_id   = aws_api_gateway_resource.translate_word.id
   http_method   = "OPTIONS"
   authorization = "NONE"
 }
 
 resource "aws_api_gateway_integration" "translate_word_options" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   resource_id = aws_api_gateway_resource.translate_word.id
   http_method = aws_api_gateway_method.translate_word_options.http_method
   type        = "MOCK"
@@ -1638,7 +1701,7 @@ resource "aws_api_gateway_integration" "translate_word_options" {
 }
 
 resource "aws_api_gateway_method_response" "translate_word_options" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   resource_id = aws_api_gateway_resource.translate_word.id
   http_method = aws_api_gateway_method.translate_word_options.http_method
   status_code = "200"
@@ -1650,7 +1713,7 @@ resource "aws_api_gateway_method_response" "translate_word_options" {
 }
 
 resource "aws_api_gateway_integration_response" "translate_word_options" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   resource_id = aws_api_gateway_resource.translate_word.id
   http_method = aws_api_gateway_method.translate_word_options.http_method
   status_code = aws_api_gateway_method_response.translate_word_options.status_code
@@ -1663,14 +1726,14 @@ resource "aws_api_gateway_integration_response" "translate_word_options" {
 
 # Batch Translate Endpoint
 resource "aws_api_gateway_method" "translate_batch_post" {
-  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id   = aws_api_gateway_rest_api.cteach_api.id
   resource_id   = aws_api_gateway_resource.translate_batch.id
   http_method   = "POST"
   authorization = "NONE"
 }
 
 resource "aws_api_gateway_integration" "translate_batch_post" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   resource_id = aws_api_gateway_resource.translate_batch.id
   http_method = aws_api_gateway_method.translate_batch_post.http_method
   integration_http_method = "POST"
@@ -1679,14 +1742,14 @@ resource "aws_api_gateway_integration" "translate_batch_post" {
 }
 
 resource "aws_api_gateway_method" "translate_batch_options" {
-  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id   = aws_api_gateway_rest_api.cteach_api.id
   resource_id   = aws_api_gateway_resource.translate_batch.id
   http_method   = "OPTIONS"
   authorization = "NONE"
 }
 
 resource "aws_api_gateway_integration" "translate_batch_options" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   resource_id = aws_api_gateway_resource.translate_batch.id
   http_method = aws_api_gateway_method.translate_batch_options.http_method
   type        = "MOCK"
@@ -1696,7 +1759,7 @@ resource "aws_api_gateway_integration" "translate_batch_options" {
 }
 
 resource "aws_api_gateway_method_response" "translate_batch_options" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   resource_id = aws_api_gateway_resource.translate_batch.id
   http_method = aws_api_gateway_method.translate_batch_options.http_method
   status_code = "200"
@@ -1708,7 +1771,7 @@ resource "aws_api_gateway_method_response" "translate_batch_options" {
 }
 
 resource "aws_api_gateway_integration_response" "translate_batch_options" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   resource_id = aws_api_gateway_resource.translate_batch.id
   http_method = aws_api_gateway_method.translate_batch_options.http_method
   status_code = aws_api_gateway_method_response.translate_batch_options.status_code
@@ -1721,30 +1784,30 @@ resource "aws_api_gateway_integration_response" "translate_batch_options" {
 
 # Admin API Endpoints - Create Grammar Lesson
 resource "aws_api_gateway_method" "admin_grammar_post" {
-  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id   = aws_api_gateway_rest_api.cteach_api.id
   resource_id   = aws_api_gateway_resource.admin_grammar.id
   http_method   = "POST"
   authorization = "NONE"
 }
 
 resource "aws_api_gateway_integration" "admin_grammar_post" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   resource_id = aws_api_gateway_resource.admin_grammar.id
   http_method = aws_api_gateway_method.admin_grammar_post.http_method
   integration_http_method = "POST"
   type                    = "AWS_PROXY"
-  uri                     = aws_lambda_function.create_grammar_lesson.invoke_arn
+  uri                     = aws_lambda_function.create_lesson.invoke_arn
 }
 
 resource "aws_api_gateway_method" "admin_grammar_options" {
-  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id   = aws_api_gateway_rest_api.cteach_api.id
   resource_id   = aws_api_gateway_resource.admin_grammar.id
   http_method   = "OPTIONS"
   authorization = "NONE"
 }
 
 resource "aws_api_gateway_integration" "admin_grammar_options" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   resource_id = aws_api_gateway_resource.admin_grammar.id
   http_method = aws_api_gateway_method.admin_grammar_options.http_method
   type        = "MOCK"
@@ -1754,7 +1817,7 @@ resource "aws_api_gateway_integration" "admin_grammar_options" {
 }
 
 resource "aws_api_gateway_method_response" "admin_grammar_options" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   resource_id = aws_api_gateway_resource.admin_grammar.id
   http_method = aws_api_gateway_method.admin_grammar_options.http_method
   status_code = "200"
@@ -1766,7 +1829,7 @@ resource "aws_api_gateway_method_response" "admin_grammar_options" {
 }
 
 resource "aws_api_gateway_integration_response" "admin_grammar_options" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   resource_id = aws_api_gateway_resource.admin_grammar.id
   http_method = aws_api_gateway_method.admin_grammar_options.http_method
   status_code = aws_api_gateway_method_response.admin_grammar_options.status_code
@@ -1777,44 +1840,44 @@ resource "aws_api_gateway_integration_response" "admin_grammar_options" {
   }
 }
 
-# Admin API Endpoints - Create Vocabulary Word
-resource "aws_api_gateway_method" "admin_vocabulary_post" {
-  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
-  resource_id   = aws_api_gateway_resource.admin_vocabulary.id
+# Admin API Endpoints - Create Term
+resource "aws_api_gateway_method" "admin_terms_post" {
+  rest_api_id   = aws_api_gateway_rest_api.cteach_api.id
+  resource_id   = aws_api_gateway_resource.admin_terms.id
   http_method   = "POST"
   authorization = "NONE"
 }
 
-resource "aws_api_gateway_integration" "admin_vocabulary_post" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
-  resource_id = aws_api_gateway_resource.admin_vocabulary.id
-  http_method = aws_api_gateway_method.admin_vocabulary_post.http_method
+resource "aws_api_gateway_integration" "admin_terms_post" {
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
+  resource_id = aws_api_gateway_resource.admin_terms.id
+  http_method = aws_api_gateway_method.admin_terms_post.http_method
   integration_http_method = "POST"
   type                    = "AWS_PROXY"
-  uri                     = aws_lambda_function.create_vocabulary_word.invoke_arn
+  uri                     = aws_lambda_function.create_term.invoke_arn
 }
 
-resource "aws_api_gateway_method" "admin_vocabulary_options" {
-  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
-  resource_id   = aws_api_gateway_resource.admin_vocabulary.id
+resource "aws_api_gateway_method" "admin_terms_options" {
+  rest_api_id   = aws_api_gateway_rest_api.cteach_api.id
+  resource_id   = aws_api_gateway_resource.admin_terms.id
   http_method   = "OPTIONS"
   authorization = "NONE"
 }
 
-resource "aws_api_gateway_integration" "admin_vocabulary_options" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
-  resource_id = aws_api_gateway_resource.admin_vocabulary.id
-  http_method = aws_api_gateway_method.admin_vocabulary_options.http_method
+resource "aws_api_gateway_integration" "admin_terms_options" {
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
+  resource_id = aws_api_gateway_resource.admin_terms.id
+  http_method = aws_api_gateway_method.admin_terms_options.http_method
   type        = "MOCK"
   request_templates = {
     "application/json" = "{\"statusCode\": 200}"
   }
 }
 
-resource "aws_api_gateway_method_response" "admin_vocabulary_options" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
-  resource_id = aws_api_gateway_resource.admin_vocabulary.id
-  http_method = aws_api_gateway_method.admin_vocabulary_options.http_method
+resource "aws_api_gateway_method_response" "admin_terms_options" {
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
+  resource_id = aws_api_gateway_resource.admin_terms.id
+  http_method = aws_api_gateway_method.admin_terms_options.http_method
   status_code = "200"
   response_parameters = {
     "method.response.header.Access-Control-Allow-Headers" = true
@@ -1823,11 +1886,11 @@ resource "aws_api_gateway_method_response" "admin_vocabulary_options" {
   }
 }
 
-resource "aws_api_gateway_integration_response" "admin_vocabulary_options" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
-  resource_id = aws_api_gateway_resource.admin_vocabulary.id
-  http_method = aws_api_gateway_method.admin_vocabulary_options.http_method
-  status_code = aws_api_gateway_method_response.admin_vocabulary_options.status_code
+resource "aws_api_gateway_integration_response" "admin_terms_options" {
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
+  resource_id = aws_api_gateway_resource.admin_terms.id
+  http_method = aws_api_gateway_method.admin_terms_options.http_method
+  status_code = aws_api_gateway_method_response.admin_terms_options.status_code
   response_parameters = {
     "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
     "method.response.header.Access-Control-Allow-Methods" = "'POST,OPTIONS'"
@@ -1837,14 +1900,14 @@ resource "aws_api_gateway_integration_response" "admin_vocabulary_options" {
 
 # Admin API Endpoints - Bulk Upload
 resource "aws_api_gateway_method" "admin_bulk_post" {
-  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id   = aws_api_gateway_rest_api.cteach_api.id
   resource_id   = aws_api_gateway_resource.admin_bulk.id
   http_method   = "POST"
   authorization = "NONE"
 }
 
 resource "aws_api_gateway_integration" "admin_bulk_post" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   resource_id = aws_api_gateway_resource.admin_bulk.id
   http_method = aws_api_gateway_method.admin_bulk_post.http_method
   integration_http_method = "POST"
@@ -1853,14 +1916,14 @@ resource "aws_api_gateway_integration" "admin_bulk_post" {
 }
 
 resource "aws_api_gateway_method" "admin_bulk_options" {
-  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id   = aws_api_gateway_rest_api.cteach_api.id
   resource_id   = aws_api_gateway_resource.admin_bulk.id
   http_method   = "OPTIONS"
   authorization = "NONE"
 }
 
 resource "aws_api_gateway_integration" "admin_bulk_options" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   resource_id = aws_api_gateway_resource.admin_bulk.id
   http_method = aws_api_gateway_method.admin_bulk_options.http_method
   type        = "MOCK"
@@ -1870,7 +1933,7 @@ resource "aws_api_gateway_integration" "admin_bulk_options" {
 }
 
 resource "aws_api_gateway_method_response" "admin_bulk_options" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   resource_id = aws_api_gateway_resource.admin_bulk.id
   http_method = aws_api_gateway_method.admin_bulk_options.http_method
   status_code = "200"
@@ -1882,7 +1945,7 @@ resource "aws_api_gateway_method_response" "admin_bulk_options" {
 }
 
 resource "aws_api_gateway_integration_response" "admin_bulk_options" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   resource_id = aws_api_gateway_resource.admin_bulk.id
   http_method = aws_api_gateway_method.admin_bulk_options.http_method
   status_code = aws_api_gateway_method_response.admin_bulk_options.status_code
@@ -1895,30 +1958,30 @@ resource "aws_api_gateway_integration_response" "admin_bulk_options" {
 
 # Admin API Endpoints - Create Grammar Quiz
 resource "aws_api_gateway_method" "admin_grammar_quiz_post" {
-  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id   = aws_api_gateway_rest_api.cteach_api.id
   resource_id   = aws_api_gateway_resource.admin_grammar_quiz.id
   http_method   = "POST"
   authorization = "NONE"
 }
 
 resource "aws_api_gateway_integration" "admin_grammar_quiz_post" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   resource_id = aws_api_gateway_resource.admin_grammar_quiz.id
   http_method = aws_api_gateway_method.admin_grammar_quiz_post.http_method
   integration_http_method = "POST"
   type                    = "AWS_PROXY"
-  uri                     = aws_lambda_function.create_grammar_quiz.invoke_arn
+  uri                     = aws_lambda_function.create_lesson_quiz.invoke_arn
 }
 
 resource "aws_api_gateway_method" "admin_grammar_quiz_options" {
-  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id   = aws_api_gateway_rest_api.cteach_api.id
   resource_id   = aws_api_gateway_resource.admin_grammar_quiz.id
   http_method   = "OPTIONS"
   authorization = "NONE"
 }
 
 resource "aws_api_gateway_integration" "admin_grammar_quiz_options" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   resource_id = aws_api_gateway_resource.admin_grammar_quiz.id
   http_method = aws_api_gateway_method.admin_grammar_quiz_options.http_method
   type        = "MOCK"
@@ -1928,7 +1991,7 @@ resource "aws_api_gateway_integration" "admin_grammar_quiz_options" {
 }
 
 resource "aws_api_gateway_method_response" "admin_grammar_quiz_options" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   resource_id = aws_api_gateway_resource.admin_grammar_quiz.id
   http_method = aws_api_gateway_method.admin_grammar_quiz_options.http_method
   status_code = "200"
@@ -1940,7 +2003,7 @@ resource "aws_api_gateway_method_response" "admin_grammar_quiz_options" {
 }
 
 resource "aws_api_gateway_integration_response" "admin_grammar_quiz_options" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   resource_id = aws_api_gateway_resource.admin_grammar_quiz.id
   http_method = aws_api_gateway_method.admin_grammar_quiz_options.http_method
   status_code = aws_api_gateway_method_response.admin_grammar_quiz_options.status_code
@@ -1951,44 +2014,44 @@ resource "aws_api_gateway_integration_response" "admin_grammar_quiz_options" {
   }
 }
 
-# Admin API Endpoints - Create Vocabulary Quiz
-resource "aws_api_gateway_method" "admin_vocabulary_quiz_post" {
-  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
-  resource_id   = aws_api_gateway_resource.admin_vocabulary_quiz.id
+# Admin API Endpoints - Create Terms Quiz
+resource "aws_api_gateway_method" "admin_terms_quiz_post" {
+  rest_api_id   = aws_api_gateway_rest_api.cteach_api.id
+  resource_id   = aws_api_gateway_resource.admin_terms_quiz.id
   http_method   = "POST"
   authorization = "NONE"
 }
 
-resource "aws_api_gateway_integration" "admin_vocabulary_quiz_post" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
-  resource_id = aws_api_gateway_resource.admin_vocabulary_quiz.id
-  http_method = aws_api_gateway_method.admin_vocabulary_quiz_post.http_method
+resource "aws_api_gateway_integration" "admin_terms_quiz_post" {
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
+  resource_id = aws_api_gateway_resource.admin_terms_quiz.id
+  http_method = aws_api_gateway_method.admin_terms_quiz_post.http_method
   integration_http_method = "POST"
   type                    = "AWS_PROXY"
-  uri                     = aws_lambda_function.create_vocabulary_quiz.invoke_arn
+  uri                     = aws_lambda_function.create_terms_quiz.invoke_arn
 }
 
-resource "aws_api_gateway_method" "admin_vocabulary_quiz_options" {
-  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
-  resource_id   = aws_api_gateway_resource.admin_vocabulary_quiz.id
+resource "aws_api_gateway_method" "admin_terms_quiz_options" {
+  rest_api_id   = aws_api_gateway_rest_api.cteach_api.id
+  resource_id   = aws_api_gateway_resource.admin_terms_quiz.id
   http_method   = "OPTIONS"
   authorization = "NONE"
 }
 
-resource "aws_api_gateway_integration" "admin_vocabulary_quiz_options" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
-  resource_id = aws_api_gateway_resource.admin_vocabulary_quiz.id
-  http_method = aws_api_gateway_method.admin_vocabulary_quiz_options.http_method
+resource "aws_api_gateway_integration" "admin_terms_quiz_options" {
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
+  resource_id = aws_api_gateway_resource.admin_terms_quiz.id
+  http_method = aws_api_gateway_method.admin_terms_quiz_options.http_method
   type        = "MOCK"
   request_templates = {
     "application/json" = "{\"statusCode\": 200}"
   }
 }
 
-resource "aws_api_gateway_method_response" "admin_vocabulary_quiz_options" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
-  resource_id = aws_api_gateway_resource.admin_vocabulary_quiz.id
-  http_method = aws_api_gateway_method.admin_vocabulary_quiz_options.http_method
+resource "aws_api_gateway_method_response" "admin_terms_quiz_options" {
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
+  resource_id = aws_api_gateway_resource.admin_terms_quiz.id
+  http_method = aws_api_gateway_method.admin_terms_quiz_options.http_method
   status_code = "200"
   response_parameters = {
     "method.response.header.Access-Control-Allow-Headers" = true
@@ -1997,11 +2060,11 @@ resource "aws_api_gateway_method_response" "admin_vocabulary_quiz_options" {
   }
 }
 
-resource "aws_api_gateway_integration_response" "admin_vocabulary_quiz_options" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
-  resource_id = aws_api_gateway_resource.admin_vocabulary_quiz.id
-  http_method = aws_api_gateway_method.admin_vocabulary_quiz_options.http_method
-  status_code = aws_api_gateway_method_response.admin_vocabulary_quiz_options.status_code
+resource "aws_api_gateway_integration_response" "admin_terms_quiz_options" {
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
+  resource_id = aws_api_gateway_resource.admin_terms_quiz.id
+  http_method = aws_api_gateway_method.admin_terms_quiz_options.http_method
+  status_code = aws_api_gateway_method_response.admin_terms_quiz_options.status_code
   response_parameters = {
     "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
     "method.response.header.Access-Control-Allow-Methods" = "'POST,OPTIONS'"
@@ -2011,14 +2074,14 @@ resource "aws_api_gateway_integration_response" "admin_vocabulary_quiz_options" 
 
 # Admin API Endpoints - Cleanup Duplicates
 resource "aws_api_gateway_method" "admin_cleanup_post" {
-  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id   = aws_api_gateway_rest_api.cteach_api.id
   resource_id   = aws_api_gateway_resource.admin_cleanup.id
   http_method   = "POST"
   authorization = "NONE"
 }
 
 resource "aws_api_gateway_integration" "admin_cleanup_post" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   resource_id = aws_api_gateway_resource.admin_cleanup.id
   http_method = aws_api_gateway_method.admin_cleanup_post.http_method
   integration_http_method = "POST"
@@ -2027,14 +2090,14 @@ resource "aws_api_gateway_integration" "admin_cleanup_post" {
 }
 
 resource "aws_api_gateway_method" "admin_cleanup_options" {
-  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id   = aws_api_gateway_rest_api.cteach_api.id
   resource_id   = aws_api_gateway_resource.admin_cleanup.id
   http_method   = "OPTIONS"
   authorization = "NONE"
 }
 
 resource "aws_api_gateway_integration" "admin_cleanup_options" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   resource_id = aws_api_gateway_resource.admin_cleanup.id
   http_method = aws_api_gateway_method.admin_cleanup_options.http_method
   type        = "MOCK"
@@ -2044,7 +2107,7 @@ resource "aws_api_gateway_integration" "admin_cleanup_options" {
 }
 
 resource "aws_api_gateway_method_response" "admin_cleanup_options" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   resource_id = aws_api_gateway_resource.admin_cleanup.id
   http_method = aws_api_gateway_method.admin_cleanup_options.http_method
   status_code = "200"
@@ -2056,7 +2119,7 @@ resource "aws_api_gateway_method_response" "admin_cleanup_options" {
 }
 
 resource "aws_api_gateway_integration_response" "admin_cleanup_options" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   resource_id = aws_api_gateway_resource.admin_cleanup.id
   http_method = aws_api_gateway_method.admin_cleanup_options.http_method
   status_code = aws_api_gateway_method_response.admin_cleanup_options.status_code
@@ -2069,14 +2132,14 @@ resource "aws_api_gateway_integration_response" "admin_cleanup_options" {
 
 # Levels API Gateway Methods
 resource "aws_api_gateway_method" "admin_levels_options" {
-  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id   = aws_api_gateway_rest_api.cteach_api.id
   resource_id   = aws_api_gateway_resource.admin_levels.id
   http_method   = "OPTIONS"
   authorization = "NONE"
 }
 
 resource "aws_api_gateway_integration" "admin_levels_options" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   resource_id = aws_api_gateway_resource.admin_levels.id
   http_method = aws_api_gateway_method.admin_levels_options.http_method
   type        = "MOCK"
@@ -2086,7 +2149,7 @@ resource "aws_api_gateway_integration" "admin_levels_options" {
 }
 
 resource "aws_api_gateway_method_response" "admin_levels_options" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   resource_id = aws_api_gateway_resource.admin_levels.id
   http_method = aws_api_gateway_method.admin_levels_options.http_method
   status_code = "200"
@@ -2098,7 +2161,7 @@ resource "aws_api_gateway_method_response" "admin_levels_options" {
 }
 
 resource "aws_api_gateway_integration_response" "admin_levels_options" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   resource_id = aws_api_gateway_resource.admin_levels.id
   http_method = aws_api_gateway_method.admin_levels_options.http_method
   status_code = aws_api_gateway_method_response.admin_levels_options.status_code
@@ -2110,14 +2173,14 @@ resource "aws_api_gateway_integration_response" "admin_levels_options" {
 }
 
 resource "aws_api_gateway_method" "admin_levels_get" {
-  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id   = aws_api_gateway_rest_api.cteach_api.id
   resource_id   = aws_api_gateway_resource.admin_levels.id
   http_method   = "GET"
   authorization = "NONE"
 }
 
 resource "aws_api_gateway_integration" "admin_levels_get" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   resource_id = aws_api_gateway_resource.admin_levels.id
   http_method = aws_api_gateway_method.admin_levels_get.http_method
   type        = "AWS_PROXY"
@@ -2126,14 +2189,14 @@ resource "aws_api_gateway_integration" "admin_levels_get" {
 }
 
 resource "aws_api_gateway_method" "admin_levels_post" {
-  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id   = aws_api_gateway_rest_api.cteach_api.id
   resource_id   = aws_api_gateway_resource.admin_levels.id
   http_method   = "POST"
   authorization = "NONE"
 }
 
 resource "aws_api_gateway_integration" "admin_levels_post" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   resource_id = aws_api_gateway_resource.admin_levels.id
   http_method = aws_api_gateway_method.admin_levels_post.http_method
   type        = "AWS_PROXY"
@@ -2143,14 +2206,14 @@ resource "aws_api_gateway_integration" "admin_levels_post" {
 
 # Level (single) API Gateway Methods
 resource "aws_api_gateway_method" "admin_level_options" {
-  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id   = aws_api_gateway_rest_api.cteach_api.id
   resource_id   = aws_api_gateway_resource.admin_level.id
   http_method   = "OPTIONS"
   authorization = "NONE"
 }
 
 resource "aws_api_gateway_integration" "admin_level_options" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   resource_id = aws_api_gateway_resource.admin_level.id
   http_method = aws_api_gateway_method.admin_level_options.http_method
   type        = "MOCK"
@@ -2160,7 +2223,7 @@ resource "aws_api_gateway_integration" "admin_level_options" {
 }
 
 resource "aws_api_gateway_method_response" "admin_level_options" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   resource_id = aws_api_gateway_resource.admin_level.id
   http_method = aws_api_gateway_method.admin_level_options.http_method
   status_code = "200"
@@ -2172,7 +2235,7 @@ resource "aws_api_gateway_method_response" "admin_level_options" {
 }
 
 resource "aws_api_gateway_integration_response" "admin_level_options" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   resource_id = aws_api_gateway_resource.admin_level.id
   http_method = aws_api_gateway_method.admin_level_options.http_method
   status_code = aws_api_gateway_method_response.admin_level_options.status_code
@@ -2184,14 +2247,14 @@ resource "aws_api_gateway_integration_response" "admin_level_options" {
 }
 
 resource "aws_api_gateway_method" "admin_level_put" {
-  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id   = aws_api_gateway_rest_api.cteach_api.id
   resource_id   = aws_api_gateway_resource.admin_level.id
   http_method   = "PUT"
   authorization = "NONE"
 }
 
 resource "aws_api_gateway_integration" "admin_level_put" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   resource_id = aws_api_gateway_resource.admin_level.id
   http_method = aws_api_gateway_method.admin_level_put.http_method
   type        = "AWS_PROXY"
@@ -2200,14 +2263,14 @@ resource "aws_api_gateway_integration" "admin_level_put" {
 }
 
 resource "aws_api_gateway_method" "admin_level_delete" {
-  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id   = aws_api_gateway_rest_api.cteach_api.id
   resource_id   = aws_api_gateway_resource.admin_level.id
   http_method   = "DELETE"
   authorization = "NONE"
 }
 
 resource "aws_api_gateway_integration" "admin_level_delete" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   resource_id = aws_api_gateway_resource.admin_level.id
   http_method = aws_api_gateway_method.admin_level_delete.http_method
   type        = "AWS_PROXY"
@@ -2217,14 +2280,14 @@ resource "aws_api_gateway_integration" "admin_level_delete" {
 
 # Categories API Gateway Methods
 resource "aws_api_gateway_method" "admin_categories_options" {
-  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id   = aws_api_gateway_rest_api.cteach_api.id
   resource_id   = aws_api_gateway_resource.admin_categories.id
   http_method   = "OPTIONS"
   authorization = "NONE"
 }
 
 resource "aws_api_gateway_integration" "admin_categories_options" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   resource_id = aws_api_gateway_resource.admin_categories.id
   http_method = aws_api_gateway_method.admin_categories_options.http_method
   type        = "MOCK"
@@ -2234,7 +2297,7 @@ resource "aws_api_gateway_integration" "admin_categories_options" {
 }
 
 resource "aws_api_gateway_method_response" "admin_categories_options" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   resource_id = aws_api_gateway_resource.admin_categories.id
   http_method = aws_api_gateway_method.admin_categories_options.http_method
   status_code = "200"
@@ -2246,7 +2309,7 @@ resource "aws_api_gateway_method_response" "admin_categories_options" {
 }
 
 resource "aws_api_gateway_integration_response" "admin_categories_options" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   resource_id = aws_api_gateway_resource.admin_categories.id
   http_method = aws_api_gateway_method.admin_categories_options.http_method
   status_code = aws_api_gateway_method_response.admin_categories_options.status_code
@@ -2258,14 +2321,14 @@ resource "aws_api_gateway_integration_response" "admin_categories_options" {
 }
 
 resource "aws_api_gateway_method" "admin_categories_get" {
-  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id   = aws_api_gateway_rest_api.cteach_api.id
   resource_id   = aws_api_gateway_resource.admin_categories.id
   http_method   = "GET"
   authorization = "NONE"
 }
 
 resource "aws_api_gateway_integration" "admin_categories_get" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   resource_id = aws_api_gateway_resource.admin_categories.id
   http_method = aws_api_gateway_method.admin_categories_get.http_method
   type        = "AWS_PROXY"
@@ -2274,14 +2337,14 @@ resource "aws_api_gateway_integration" "admin_categories_get" {
 }
 
 resource "aws_api_gateway_method" "admin_categories_post" {
-  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id   = aws_api_gateway_rest_api.cteach_api.id
   resource_id   = aws_api_gateway_resource.admin_categories.id
   http_method   = "POST"
   authorization = "NONE"
 }
 
 resource "aws_api_gateway_integration" "admin_categories_post" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   resource_id = aws_api_gateway_resource.admin_categories.id
   http_method = aws_api_gateway_method.admin_categories_post.http_method
   type        = "AWS_PROXY"
@@ -2291,14 +2354,14 @@ resource "aws_api_gateway_integration" "admin_categories_post" {
 
 # Category (single) API Gateway Methods
 resource "aws_api_gateway_method" "admin_category_options" {
-  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id   = aws_api_gateway_rest_api.cteach_api.id
   resource_id   = aws_api_gateway_resource.admin_category.id
   http_method   = "OPTIONS"
   authorization = "NONE"
 }
 
 resource "aws_api_gateway_integration" "admin_category_options" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   resource_id = aws_api_gateway_resource.admin_category.id
   http_method = aws_api_gateway_method.admin_category_options.http_method
   type        = "MOCK"
@@ -2308,7 +2371,7 @@ resource "aws_api_gateway_integration" "admin_category_options" {
 }
 
 resource "aws_api_gateway_method_response" "admin_category_options" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   resource_id = aws_api_gateway_resource.admin_category.id
   http_method = aws_api_gateway_method.admin_category_options.http_method
   status_code = "200"
@@ -2320,7 +2383,7 @@ resource "aws_api_gateway_method_response" "admin_category_options" {
 }
 
 resource "aws_api_gateway_integration_response" "admin_category_options" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   resource_id = aws_api_gateway_resource.admin_category.id
   http_method = aws_api_gateway_method.admin_category_options.http_method
   status_code = aws_api_gateway_method_response.admin_category_options.status_code
@@ -2332,14 +2395,14 @@ resource "aws_api_gateway_integration_response" "admin_category_options" {
 }
 
 resource "aws_api_gateway_method" "admin_category_put" {
-  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id   = aws_api_gateway_rest_api.cteach_api.id
   resource_id   = aws_api_gateway_resource.admin_category.id
   http_method   = "PUT"
   authorization = "NONE"
 }
 
 resource "aws_api_gateway_integration" "admin_category_put" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   resource_id = aws_api_gateway_resource.admin_category.id
   http_method = aws_api_gateway_method.admin_category_put.http_method
   type        = "AWS_PROXY"
@@ -2348,14 +2411,14 @@ resource "aws_api_gateway_integration" "admin_category_put" {
 }
 
 resource "aws_api_gateway_method" "admin_category_delete" {
-  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id   = aws_api_gateway_rest_api.cteach_api.id
   resource_id   = aws_api_gateway_resource.admin_category.id
   http_method   = "DELETE"
   authorization = "NONE"
 }
 
 resource "aws_api_gateway_integration" "admin_category_delete" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   resource_id = aws_api_gateway_resource.admin_category.id
   http_method = aws_api_gateway_method.admin_category_delete.http_method
   type        = "AWS_PROXY"
@@ -2365,14 +2428,14 @@ resource "aws_api_gateway_integration" "admin_category_delete" {
 
 # Upload Image API Gateway Methods
 resource "aws_api_gateway_method" "admin_upload_image_options" {
-  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id   = aws_api_gateway_rest_api.cteach_api.id
   resource_id   = aws_api_gateway_resource.admin_upload_image.id
   http_method   = "OPTIONS"
   authorization = "NONE"
 }
 
 resource "aws_api_gateway_integration" "admin_upload_image_options" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   resource_id = aws_api_gateway_resource.admin_upload_image.id
   http_method = aws_api_gateway_method.admin_upload_image_options.http_method
   type        = "MOCK"
@@ -2382,7 +2445,7 @@ resource "aws_api_gateway_integration" "admin_upload_image_options" {
 }
 
 resource "aws_api_gateway_method_response" "admin_upload_image_options" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   resource_id = aws_api_gateway_resource.admin_upload_image.id
   http_method = aws_api_gateway_method.admin_upload_image_options.http_method
   status_code = "200"
@@ -2394,7 +2457,7 @@ resource "aws_api_gateway_method_response" "admin_upload_image_options" {
 }
 
 resource "aws_api_gateway_integration_response" "admin_upload_image_options" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   resource_id = aws_api_gateway_resource.admin_upload_image.id
   http_method = aws_api_gateway_method.admin_upload_image_options.http_method
   status_code = aws_api_gateway_method_response.admin_upload_image_options.status_code
@@ -2406,18 +2469,92 @@ resource "aws_api_gateway_integration_response" "admin_upload_image_options" {
 }
 
 resource "aws_api_gateway_method" "admin_upload_image_post" {
-  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id   = aws_api_gateway_rest_api.cteach_api.id
   resource_id   = aws_api_gateway_resource.admin_upload_image.id
   http_method   = "POST"
   authorization = "NONE"
 }
 
 resource "aws_api_gateway_integration" "admin_upload_image_post" {
-  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
   resource_id = aws_api_gateway_resource.admin_upload_image.id
   http_method = aws_api_gateway_method.admin_upload_image_post.http_method
   type        = "AWS_PROXY"
   integration_http_method = "POST"
   uri         = aws_lambda_function.upload_image.invoke_arn
+}
+
+# App Config API Gateway Methods
+resource "aws_api_gateway_method" "app_config_options" {
+  rest_api_id   = aws_api_gateway_rest_api.cteach_api.id
+  resource_id   = aws_api_gateway_resource.app_config.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "app_config_options" {
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
+  resource_id = aws_api_gateway_resource.app_config.id
+  http_method = aws_api_gateway_method.app_config_options.http_method
+  type        = "MOCK"
+  request_templates = {
+    "application/json" = "{\"statusCode\": 200}"
+  }
+}
+
+resource "aws_api_gateway_method_response" "app_config_options" {
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
+  resource_id = aws_api_gateway_resource.app_config.id
+  http_method = aws_api_gateway_method.app_config_options.http_method
+  status_code = "200"
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = true
+    "method.response.header.Access-Control-Allow-Methods" = true
+    "method.response.header.Access-Control-Allow-Origin"  = true
+  }
+}
+
+resource "aws_api_gateway_integration_response" "app_config_options" {
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
+  resource_id = aws_api_gateway_resource.app_config.id
+  http_method = aws_api_gateway_method.app_config_options.http_method
+  status_code = aws_api_gateway_method_response.app_config_options.status_code
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+    "method.response.header.Access-Control-Allow-Methods" = "'GET,POST,PUT,OPTIONS'"
+    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
+  }
+}
+
+resource "aws_api_gateway_method" "app_config_get" {
+  rest_api_id   = aws_api_gateway_rest_api.cteach_api.id
+  resource_id   = aws_api_gateway_resource.app_config.id
+  http_method   = "GET"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "app_config_get" {
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
+  resource_id = aws_api_gateway_resource.app_config.id
+  http_method = aws_api_gateway_method.app_config_get.http_method
+  type        = "AWS_PROXY"
+  integration_http_method = "POST"
+  uri         = aws_lambda_function.get_app_config.invoke_arn
+}
+
+resource "aws_api_gateway_method" "app_config_post" {
+  rest_api_id   = aws_api_gateway_rest_api.cteach_api.id
+  resource_id   = aws_api_gateway_resource.app_config.id
+  http_method   = "POST"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "app_config_post" {
+  rest_api_id = aws_api_gateway_rest_api.cteach_api.id
+  resource_id = aws_api_gateway_resource.app_config.id
+  http_method = aws_api_gateway_method.app_config_post.http_method
+  type        = "AWS_PROXY"
+  integration_http_method = "POST"
+  uri         = aws_lambda_function.get_app_config.invoke_arn
 }
 

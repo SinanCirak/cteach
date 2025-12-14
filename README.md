@@ -350,6 +350,6 @@ For questions or support, please open an issue on [GitHub](https://github.com/Si
 
 **Made with ❤️ for English learners worldwide**
 
-[Website](https://tilgo.cirak.ca) • [GitHub](https://github.com/SinanCirak/tilgo)
+[Website](https://cteach.cirak.ca) • [GitHub](https://github.com/SinanCirak/cteach)
 
 </div>

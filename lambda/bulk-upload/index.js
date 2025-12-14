@@ -3,7 +3,7 @@ const dynamodb = new AWS.DynamoDB.DocumentClient();
 const { v4: uuidv4 } = require('uuid');
 
 const GRAMMAR_LESSONS_TABLE = process.env.GRAMMAR_LESSONS_TABLE || 'grammar_lessons';
-const VOCABULARY_WORDS_TABLE = process.env.VOCABULARY_WORDS_TABLE || 'vocabulary_words';
+const TERMS_TABLE = process.env.TERMS_TABLE || 'terms';
 
 exports.handler = async (event) => {
   const headers = {
@@ -39,7 +39,7 @@ exports.handler = async (event) => {
       errors: []
     };
 
-    if (type === 'grammar_lessons') {
+    if (type === 'lessons') {
       for (const item of items) {
         try {
           const lessonId = item.lessonId || uuidv4();
@@ -78,18 +78,18 @@ exports.handler = async (event) => {
           results.errors.push({ item, error: error.message });
         }
       }
-    } else if (type === 'vocabulary_words') {
+    } else if (type === 'terms') {
       for (const item of items) {
         try {
-          if (!item.word) {
-            results.errors.push({ item, error: 'Word is required' });
+          if (!item.term) {
+            results.errors.push({ item, error: 'Term is required' });
             continue;
           }
 
-          const wordId = item.wordId || uuidv4();
-          const word = {
-            wordId,
-            word: item.word.toLowerCase().trim(),
+          const termId = item.termId || uuidv4();
+          const term = {
+            termId,
+            term: item.term.toLowerCase().trim(),
             definition: item.definition || '',
             example: item.example || '',
             partOfSpeech: item.partOfSpeech || 'noun',
@@ -100,11 +100,11 @@ exports.handler = async (event) => {
           };
 
           await dynamodb.put({
-            TableName: VOCABULARY_WORDS_TABLE,
-            Item: word
+            TableName: TERMS_TABLE,
+            Item: term
           }).promise();
 
-          results.success.push({ wordId, word: word.word });
+          results.success.push({ termId, term: term.term });
         } catch (error) {
           results.errors.push({ item, error: error.message });
         }
@@ -113,7 +113,7 @@ exports.handler = async (event) => {
       return {
         statusCode: 400,
         headers,
-        body: JSON.stringify({ error: 'Type must be "grammar_lessons" or "vocabulary_words"' })
+        body: JSON.stringify({ error: 'Type must be "lessons" or "terms"' })
       };
     }
 

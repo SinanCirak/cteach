@@ -94,7 +94,7 @@ exports.handler = async (event) => {
       body: JSON.stringify(result.Item),
     };
   } catch (error) {
-    console.error('Error fetching grammar quiz:', error);
+    console.error('Error fetching lesson quiz:', error);
     return {
       statusCode: 500,
       headers: {
@@ -102,7 +102,7 @@ exports.handler = async (event) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        error: 'Failed to fetch grammar quiz',
+        error: 'Failed to fetch lesson quiz',
         message: error.message,
       }),
     };

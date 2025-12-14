@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useState } from 'react'
 import LanguageSelector from './LanguageSelector'
+import { useAppConfig } from '../contexts/AppConfigContext'
 
 interface LayoutProps {
   children: React.ReactNode
@@ -9,6 +10,7 @@ interface LayoutProps {
 export default function Layout({ children }: LayoutProps) {
   const location = useLocation()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const { config } = useAppConfig()
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
@@ -28,26 +30,42 @@ export default function Layout({ children }: LayoutProps) {
             
             {/* Desktop Navigation */}
             <div className="hidden md:flex items-center space-x-4 lg:space-x-6">
-              <Link
-                to="/grammar"
-                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                  location.pathname.startsWith('/grammar')
-                    ? 'text-primary-600 bg-primary-50'
-                    : 'text-gray-700 hover:text-primary-600 hover:bg-gray-50'
-                }`}
-              >
-                Grammar
-              </Link>
-              <Link
-                to="/vocabulary"
-                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                  location.pathname.startsWith('/vocabulary')
-                    ? 'text-primary-600 bg-primary-50'
-                    : 'text-gray-700 hover:text-primary-600 hover:bg-gray-50'
-                }`}
-              >
-                Vocabulary
-              </Link>
+              {config?.features.lessons && (
+                <Link
+                  to="/lessons"
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    location.pathname.startsWith('/lessons') || location.pathname.startsWith('/grammar')
+                      ? 'text-primary-600 bg-primary-50'
+                      : 'text-gray-700 hover:text-primary-600 hover:bg-gray-50'
+                  }`}
+                >
+                  Lessons
+                </Link>
+              )}
+              {config?.features.terms && (
+                <Link
+                  to="/terms"
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    location.pathname.startsWith('/terms') || location.pathname.startsWith('/vocabulary')
+                      ? 'text-primary-600 bg-primary-50'
+                      : 'text-gray-700 hover:text-primary-600 hover:bg-gray-50'
+                  }`}
+                >
+                  {config.termsType === 'formulas' ? 'Formulas' : 'Terms'}
+                </Link>
+              )}
+              {config?.features.quizzes && (
+                <Link
+                  to="/quizzes"
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    location.pathname.startsWith('/quizzes')
+                      ? 'text-primary-600 bg-primary-50'
+                      : 'text-gray-700 hover:text-primary-600 hover:bg-gray-50'
+                  }`}
+                >
+                  Quizzes
+                </Link>
+              )}
               <LanguageSelector />
             </div>
 
@@ -75,28 +93,45 @@ export default function Layout({ children }: LayoutProps) {
           {/* Mobile Navigation Menu */}
           {mobileMenuOpen && (
             <div className="md:hidden border-t border-gray-200 py-4 space-y-2">
-              <Link
-                to="/grammar"
-                onClick={() => setMobileMenuOpen(false)}
-                className={`block px-4 py-2 rounded-md text-base font-medium transition-colors ${
-                  location.pathname.startsWith('/grammar')
-                    ? 'text-primary-600 bg-primary-50'
-                    : 'text-gray-700 hover:text-primary-600 hover:bg-gray-50'
-                }`}
-              >
-                Grammar
-              </Link>
-              <Link
-                to="/vocabulary"
-                onClick={() => setMobileMenuOpen(false)}
-                className={`block px-4 py-2 rounded-md text-base font-medium transition-colors ${
-                  location.pathname.startsWith('/vocabulary')
-                    ? 'text-primary-600 bg-primary-50'
-                    : 'text-gray-700 hover:text-primary-600 hover:bg-gray-50'
-                }`}
-              >
-                Vocabulary
-              </Link>
+              {config?.features.lessons && (
+                <Link
+                  to="/lessons"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`block px-4 py-2 rounded-md text-base font-medium transition-colors ${
+                    location.pathname.startsWith('/lessons') || location.pathname.startsWith('/grammar')
+                      ? 'text-primary-600 bg-primary-50'
+                      : 'text-gray-700 hover:text-primary-600 hover:bg-gray-50'
+                  }`}
+                >
+                  Lessons
+                </Link>
+              )}
+              {config?.features.terms && (
+                <Link
+                  to="/terms"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`block px-4 py-2 rounded-md text-base font-medium transition-colors ${
+                    location.pathname.startsWith('/terms') || location.pathname.startsWith('/vocabulary')
+                      ? 'text-primary-600 bg-primary-50'
+                      : 'text-gray-700 hover:text-primary-600 hover:bg-gray-50'
+                  }`}
+                >
+                  {config.termsType === 'formulas' ? 'Formulas' : 'Terms'}
+                </Link>
+              )}
+              {config?.features.quizzes && (
+                <Link
+                  to="/quizzes"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`block px-4 py-2 rounded-md text-base font-medium transition-colors ${
+                    location.pathname.startsWith('/quizzes')
+                      ? 'text-primary-600 bg-primary-50'
+                      : 'text-gray-700 hover:text-primary-600 hover:bg-gray-50'
+                  }`}
+                >
+                  Quizzes
+                </Link>
+              )}
             </div>
           )}
         </div>

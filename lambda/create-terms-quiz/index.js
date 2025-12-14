@@ -2,7 +2,7 @@ const AWS = require('aws-sdk');
 const dynamodb = new AWS.DynamoDB.DocumentClient();
 const { v4: uuidv4 } = require('uuid');
 
-const VOCABULARY_QUIZZES_TABLE = process.env.VOCABULARY_QUIZZES_TABLE || 'vocabulary_quizzes';
+const TERMS_QUIZZES_TABLE = process.env.TERMS_QUIZZES_TABLE || 'terms_quizzes';
 
 exports.handler = async (event) => {
   const headers = {
@@ -61,8 +61,8 @@ exports.handler = async (event) => {
       category: body.category || 'general',
       questions: body.questions.map((q, idx) => ({
         id: q.id || `q${idx + 1}`,
-        type: q.type, // 'definition', 'word-selection', 'multiple-choice'
-        word: q.word || '',
+        type: q.type, // 'definition', 'term-selection', 'multiple-choice'
+        term: q.term || '',
         definition: q.definition || '',
         options: q.options,
         correctAnswer: q.correctAnswer,
@@ -74,7 +74,7 @@ exports.handler = async (event) => {
     };
 
     await dynamodb.put({
-      TableName: VOCABULARY_QUIZZES_TABLE,
+      TableName: TERMS_QUIZZES_TABLE,
       Item: quiz
     }).promise();
 
@@ -82,17 +82,17 @@ exports.handler = async (event) => {
       statusCode: 201,
       headers,
       body: JSON.stringify({
-        message: 'Vocabulary quiz created successfully',
+        message: 'Terms quiz created successfully',
         quiz
       })
     };
   } catch (error) {
-    console.error('Error creating vocabulary quiz:', error);
+    console.error('Error creating terms quiz:', error);
     return {
       statusCode: 500,
       headers,
       body: JSON.stringify({
-        error: 'Failed to create vocabulary quiz',
+        error: 'Failed to create terms quiz',
         message: error.message
       })
     };

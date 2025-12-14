@@ -1,13 +1,13 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { getVocabularyQuiz, getVocabularyQuizzes } from '../utils/api'
+import { getTermsQuiz, getTermsQuizzes } from '../utils/api'
 
-type QuizType = 'definition' | 'word-selection' | 'multiple-choice'
+type QuizType = 'definition' | 'term-selection' | 'multiple-choice'
 
 interface QuizQuestion {
   id: string
   type: QuizType
-  word: string
+  term: string
   definition: string
   options: string[]
   correctAnswer: number
@@ -15,7 +15,7 @@ interface QuizQuestion {
   explanation?: string
 }
 
-interface VocabularyQuiz {
+interface TermsQuiz {
   quizId: string
   title: string
   level?: string
@@ -23,10 +23,10 @@ interface VocabularyQuiz {
   questions: QuizQuestion[]
 }
 
-export default function VocabularyQuiz() {
+export default function TermsQuiz() {
   const [searchParams] = useSearchParams()
   const quizId = searchParams.get('id')
-  const [quiz, setQuiz] = useState<VocabularyQuiz | null>(null)
+  const [quiz, setQuiz] = useState<TermsQuiz | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [currentQuestion, setCurrentQuestion] = useState(0)
@@ -39,9 +39,9 @@ export default function VocabularyQuiz() {
       if (!quizId) {
         // If no quiz ID, try to get first available quiz
         try {
-          const data = await getVocabularyQuizzes()
+          const data = await getTermsQuizzes()
           if (data && data.quizzes && data.quizzes.length > 0) {
-            const firstQuiz = await getVocabularyQuiz(data.quizzes[0].quizId)
+            const firstQuiz = await getTermsQuiz(data.quizzes[0].quizId)
             setQuiz(firstQuiz)
           } else {
             setError('No quizzes available')
@@ -55,7 +55,7 @@ export default function VocabularyQuiz() {
       } else {
         try {
           setLoading(true)
-          const data = await getVocabularyQuiz(quizId)
+          const data = await getTermsQuiz(quizId)
           setQuiz(data)
         } catch (err: any) {
           console.error('Failed to fetch quiz:', err)
@@ -84,8 +84,8 @@ export default function VocabularyQuiz() {
     return (
       <div className="text-center py-12">
         <h2 className="text-2xl font-bold text-gray-900 mb-4">{error || 'Quiz not found'}</h2>
-        <Link to="/vocabulary" className="text-primary-600 hover:underline">
-          Back to Vocabulary
+        <Link to="/terms" className="text-primary-600 hover:underline">
+          Back to Terms
         </Link>
       </div>
     )
@@ -129,8 +129,8 @@ export default function VocabularyQuiz() {
     return (
       <div className="text-center py-12">
         <h2 className="text-2xl font-bold text-gray-900 mb-4">No questions in this quiz</h2>
-        <Link to="/vocabulary" className="text-primary-600 hover:underline">
-          Back to Vocabulary
+        <Link to="/terms" className="text-primary-600 hover:underline">
+          Back to Terms
         </Link>
       </div>
     )
@@ -159,16 +159,16 @@ export default function VocabularyQuiz() {
           </p>
           <div className="flex gap-4 justify-center pt-4">
             <Link
-              to="/vocabulary/list"
+              to="/terms/list"
               className="px-6 py-3 bg-gray-200 text-gray-800 rounded-lg font-semibold hover:bg-gray-300 transition-colors"
             >
-              Review Words
+              Review Terms
             </Link>
             <Link
-              to="/vocabulary"
+              to="/terms"
               className="px-6 py-3 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700 transition-colors"
             >
-              Back to Vocabulary
+              Back to Terms
             </Link>
           </div>
         </div>
@@ -204,8 +204,8 @@ export default function VocabularyQuiz() {
                 ) : question.type === 'multiple-choice' ? (
                   <div>
                     <p className="text-gray-700 mb-4">
-                      <span className="font-semibold">Word: </span>
-                      {question.word}
+                      <span className="font-semibold">Term: </span>
+                      {question.term}
                     </p>
                     <p className="text-gray-700 mb-4">
                       <span className="font-semibold">Definition: </span>
@@ -216,8 +216,8 @@ export default function VocabularyQuiz() {
                 ) : (
                   <div>
                     <p className="text-gray-700 mb-4">
-                      <span className="font-semibold">Word: </span>
-                      {question.word}
+                      <span className="font-semibold">Term: </span>
+                      {question.term}
                     </p>
                     {question.example && (
                       <p className="text-gray-600 mb-4 italic">Example: {question.example}</p>
@@ -260,13 +260,13 @@ export default function VocabularyQuiz() {
     <div className="max-w-4xl mx-auto space-y-8">
       <div className="flex items-center justify-between">
         <Link
-          to="/vocabulary"
+          to="/terms"
           className="flex items-center text-gray-600 hover:text-primary-600 transition-colors"
         >
           <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
-          Back to Vocabulary
+          Back to Terms
         </Link>
         <div className="text-sm text-gray-600">
           Question {currentQuestion + 1} of {quizQuestions.length}
@@ -275,7 +275,7 @@ export default function VocabularyQuiz() {
 
       <div className="bg-white rounded-2xl shadow-lg p-8 space-y-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Vocabulary Quiz</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Terms Quiz</h1>
           <div className="w-full bg-gray-200 rounded-full h-2">
             <div
               className="bg-primary-600 h-2 rounded-full transition-all duration-300"
@@ -292,14 +292,14 @@ export default function VocabularyQuiz() {
                 <p className="text-2xl text-gray-900">{currentQ.definition}</p>
               </div>
               <div>
-                <h2 className="text-xl font-semibold text-gray-700 mb-4">Select the correct word:</h2>
+                <h2 className="text-xl font-semibold text-gray-700 mb-4">Select the correct term:</h2>
               </div>
             </>
           ) : currentQ.type === 'multiple-choice' ? (
             <>
               <div>
-                <h2 className="text-xl font-semibold text-gray-700 mb-2">Word:</h2>
-                <p className="text-2xl text-gray-900 mb-4">{currentQ.word}</p>
+                <h2 className="text-xl font-semibold text-gray-700 mb-2">Term:</h2>
+                <p className="text-2xl text-gray-900 mb-4">{currentQ.term}</p>
                 <h2 className="text-xl font-semibold text-gray-700 mb-2">Definition:</h2>
                 <p className="text-lg text-gray-700 mb-4">{currentQ.definition}</p>
                 <h2 className="text-xl font-semibold text-gray-700 mb-4">Which sentence is correct?</h2>
@@ -309,7 +309,7 @@ export default function VocabularyQuiz() {
             <>
               <div>
                 <h2 className="text-xl font-semibold text-gray-700 mb-2">Word:</h2>
-                <p className="text-3xl font-bold text-primary-600 mb-4">{currentQ.word}</p>
+                <p className="text-3xl font-bold text-primary-600 mb-4">{currentQ.term}</p>
                 {currentQ.example && (
                   <div className="bg-primary-50 rounded-lg p-4 mb-4 border-l-4 border-primary-500">
                     <p className="text-gray-700 italic">Example: {currentQ.example}</p>

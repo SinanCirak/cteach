@@ -1,12 +1,12 @@
-# Tilgo AWS Infrastructure
+# cteach AWS Infrastructure
 
-Terraform configuration for deploying Tilgo English Learning Platform to AWS.
+Terraform configuration for deploying cteach Learning Platform to AWS.
 
 ## Architecture
 
 - **S3**: Static React website hosting
 - **CloudFront**: CDN for fast content delivery
-- **Route53**: DNS management (tilgo.cirak.ca)
+- **Route53**: DNS management (cteach.cirak.ca)
 - **API Gateway**: REST API endpoints
 - **DynamoDB**: Data storage (grammar lessons, quizzes, vocabulary, translations cache)
 - **Lambda**: Serverless functions for API
@@ -25,8 +25,8 @@ Terraform configuration for deploying Tilgo English Learning Platform to AWS.
 ```hcl
 aws_region  = "ca-central-1"
 environment = "prod"
-bucket_name = "tilgo-website-prod"
-domain_name = "tilgo.cirak.ca"
+bucket_name = "cteach-website-prod"
+domain_name = "cteach.cirak.ca"
 root_domain = "cirak.ca"
 ```
 
@@ -77,7 +77,7 @@ zip -r function.zip index.js node_modules package.json
 aws lambda create-function \
   --function-name translate-word \
   --runtime nodejs18.x \
-  --role arn:aws:iam::<account-id>:role/tilgo-lambda-role \
+  --role arn:aws:iam::<account-id>:role/cteach-lambda-role \
   --handler index.handler \
   --zip-file fileb://function.zip \
   --region ca-central-1 \
@@ -102,7 +102,7 @@ zip -r function.zip index.js node_modules package.json
 aws lambda create-function \
   --function-name batch-translate \
   --runtime nodejs18.x \
-  --role arn:aws:iam::<account-id>:role/tilgo-lambda-role \
+  --role arn:aws:iam::<account-id>:role/cteach-lambda-role \
   --handler index.handler \
   --zip-file fileb://function.zip \
   --region ca-central-1 \

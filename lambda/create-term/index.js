@@ -2,7 +2,7 @@ const AWS = require('aws-sdk');
 const dynamodb = new AWS.DynamoDB.DocumentClient();
 const { v4: uuidv4 } = require('uuid');
 
-const VOCABULARY_WORDS_TABLE = process.env.VOCABULARY_WORDS_TABLE || 'vocabulary_words';
+const TERMS_TABLE = process.env.TERMS_TABLE || 'terms';
 
 exports.handler = async (event) => {
   const headers = {
@@ -25,20 +25,20 @@ exports.handler = async (event) => {
     const body = JSON.parse(event.body || '{}');
     
     // Validate required fields
-    if (!body.word) {
+    if (!body.term) {
       return {
         statusCode: 400,
         headers,
-        body: JSON.stringify({ error: 'Word is required' })
+        body: JSON.stringify({ error: 'Term is required' })
       };
     }
 
-    // Generate word ID if not provided
-    const wordId = body.wordId || uuidv4();
+    // Generate term ID if not provided
+    const termId = body.termId || uuidv4();
     
-    const word = {
-      wordId,
-      word: body.word.toLowerCase().trim(),
+    const term = {
+      termId,
+      term: body.term.toLowerCase().trim(),
       definition: body.definition || '',
       example: body.example || '',
       partOfSpeech: body.partOfSpeech || 'noun', // noun, verb, adjective, adverb, etc.
@@ -49,25 +49,25 @@ exports.handler = async (event) => {
     };
 
     await dynamodb.put({
-      TableName: VOCABULARY_WORDS_TABLE,
-      Item: word
+      TableName: TERMS_TABLE,
+      Item: term
     }).promise();
 
     return {
       statusCode: 201,
       headers,
       body: JSON.stringify({
-        message: 'Vocabulary word created successfully',
-        word
+        message: 'Term created successfully',
+        term
       })
     };
   } catch (error) {
-    console.error('Error creating vocabulary word:', error);
+    console.error('Error creating term:', error);
     return {
       statusCode: 500,
       headers,
       body: JSON.stringify({
-        error: 'Failed to create vocabulary word',
+        error: 'Failed to create term',
         message: error.message
       })
     };

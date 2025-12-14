@@ -5,7 +5,7 @@ const GRAMMAR_LESSONS_TABLE = process.env.GRAMMAR_LESSONS_TABLE || 'grammar_less
 
 exports.handler = async (event) => {
   try {
-    // Scan all grammar lessons
+    // Scan all lessons
     const params = {
       TableName: GRAMMAR_LESSONS_TABLE,
     };
@@ -26,7 +26,7 @@ exports.handler = async (event) => {
       }),
     };
   } catch (error) {
-    console.error('Error fetching grammar lessons:', error);
+    console.error('Error fetching lessons:', error);
     return {
       statusCode: 500,
       headers: {
@@ -34,7 +34,7 @@ exports.handler = async (event) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        error: 'Failed to fetch grammar lessons',
+        error: 'Failed to fetch lessons',
         message: error.message,
       }),
     };

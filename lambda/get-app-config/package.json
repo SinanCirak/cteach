@@ -1,0 +1,16 @@
+{
+  "name": "get-app-config",
+  "version": "1.0.0",
+  "description": "Lambda function to get and update app configuration",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "aws-sdk": "^2.1046.0"
+  }
+}
+

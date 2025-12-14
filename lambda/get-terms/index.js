@@ -1,33 +1,33 @@
 const AWS = require('aws-sdk');
 const dynamodb = new AWS.DynamoDB.DocumentClient();
 
-const VOCABULARY_WORDS_TABLE = process.env.VOCABULARY_WORDS_TABLE || 'vocabulary_words';
+const TERMS_TABLE = process.env.TERMS_TABLE || 'terms';
 
 exports.handler = async (event) => {
   try {
     const queryParams = event.queryStringParameters || {};
-    const word = queryParams.word;
+    const term = queryParams.term;
     const level = queryParams.level;
 
     let params;
 
-    if (word) {
-      // Search by word using GSI
+    if (term) {
+      // Search by term using GSI
       params = {
-        TableName: VOCABULARY_WORDS_TABLE,
-        IndexName: 'word-index',
-        KeyConditionExpression: '#word = :word',
+        TableName: TERMS_TABLE,
+        IndexName: 'term-index',
+        KeyConditionExpression: '#term = :term',
         ExpressionAttributeNames: {
-          '#word': 'word',
+          '#term': 'term',
         },
         ExpressionAttributeValues: {
-          ':word': word.toLowerCase(),
+          ':term': term.toLowerCase(),
         },
       };
     } else if (level) {
       // Filter by level
       params = {
-        TableName: VOCABULARY_WORDS_TABLE,
+        TableName: TERMS_TABLE,
         FilterExpression: '#level = :level',
         ExpressionAttributeNames: {
           '#level': 'level',
@@ -37,13 +37,13 @@ exports.handler = async (event) => {
         },
       };
     } else {
-      // Get all words
+      // Get all terms
       params = {
-        TableName: VOCABULARY_WORDS_TABLE,
+        TableName: TERMS_TABLE,
       };
     }
 
-    const result = word
+    const result = term
       ? await dynamodb.query(params).promise()
       : await dynamodb.scan(params).promise();
 
@@ -56,12 +56,12 @@ exports.handler = async (event) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        words: result.Items || [],
+        terms: result.Items || [],
         count: result.Count || 0,
       }),
     };
   } catch (error) {
-    console.error('Error fetching vocabulary words:', error);
+    console.error('Error fetching terms:', error);
     return {
       statusCode: 500,
       headers: {
@@ -69,7 +69,7 @@ exports.handler = async (event) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        error: 'Failed to fetch vocabulary words',
+        error: 'Failed to fetch terms',
         message: error.message,
       }),
     };

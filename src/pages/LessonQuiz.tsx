@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { getGrammarQuiz } from '../utils/api'
+import { getLessonQuiz } from '../utils/api'
 
 interface Quiz {
   quizId: string
@@ -15,7 +15,7 @@ interface Quiz {
   }[]
 }
 
-export default function GrammarQuiz() {
+export default function LessonQuiz() {
   const { lessonId } = useParams<{ lessonId: string }>()
   const [quiz, setQuiz] = useState<Quiz | null>(null)
   const [loading, setLoading] = useState(true)
@@ -32,7 +32,7 @@ export default function GrammarQuiz() {
       try {
         setLoading(true)
         // Get quiz by lessonId
-        const data = await getGrammarQuiz(lessonId, true)
+        const data = await getLessonQuiz(lessonId, true)
         setQuiz(data)
       } catch (err: any) {
         console.error('Failed to fetch quiz:', err)
@@ -60,8 +60,8 @@ export default function GrammarQuiz() {
     return (
       <div className="text-center py-12">
         <h2 className="text-2xl font-bold text-gray-900 mb-4">{error || 'Quiz not found'}</h2>
-        <Link to="/grammar" className="text-primary-600 hover:underline">
-          Back to Grammar Lessons
+        <Link to="/lessons" className="text-primary-600 hover:underline">
+          Back to Lessons
         </Link>
       </div>
     )
@@ -120,13 +120,13 @@ export default function GrammarQuiz() {
           </p>
           <div className="flex gap-4 justify-center pt-4">
             <Link
-              to={`/grammar/${lessonId}`}
+              to={`/lessons/${lessonId}`}
               className="px-6 py-3 bg-gray-200 text-gray-800 rounded-lg font-semibold hover:bg-gray-300 transition-colors"
             >
               Review Lesson
             </Link>
             <Link
-              to="/grammar"
+              to="/lessons"
               className="px-6 py-3 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700 transition-colors"
             >
               Back to Lessons
@@ -190,7 +190,7 @@ export default function GrammarQuiz() {
     <div className="max-w-4xl mx-auto space-y-8">
       <div className="flex items-center justify-between">
         <Link
-          to={`/grammar/${lessonId}`}
+          to={`/lessons/${lessonId}`}
           className="flex items-center text-gray-600 hover:text-primary-600 transition-colors"
         >
           <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">

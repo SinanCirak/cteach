@@ -58,15 +58,15 @@ export async function translateWord(word: string, targetLanguage: string = 'tr')
 }
 
 /**
- * Get grammar lessons
+ * Get lessons
  */
-export async function getGrammarLessons() {
+export async function getLessons() {
   try {
-    const response = await fetch(`${API_BASE_URL}/grammar/lessons`)
+    const response = await fetch(`${API_BASE_URL}/lessons`)
     if (!response.ok) {
       const errorText = await response.text()
       console.error('API Error:', response.status, errorText)
-      throw new Error(`Failed to fetch grammar lessons: ${response.status} ${errorText}`)
+      throw new Error(`Failed to fetch lessons: ${response.status} ${errorText}`)
     }
     const data = await response.json()
     return data
@@ -81,16 +81,19 @@ export async function getGrammarLessons() {
   }
 }
 
+// Backward compatibility alias
+export const getGrammarLessons = getLessons
+
 /**
- * Get grammar lesson by ID
+ * Get lesson by ID
  */
-export async function getGrammarLesson(lessonId: string) {
+export async function getLesson(lessonId: string) {
   try {
-    const response = await fetch(`${API_BASE_URL}/grammar/lessons/${lessonId}`)
+    const response = await fetch(`${API_BASE_URL}/lessons/${lessonId}`)
     if (!response.ok) {
       const errorText = await response.text()
       console.error('API Error:', response.status, errorText)
-      throw new Error(`Failed to fetch grammar lesson: ${response.status} ${errorText}`)
+      throw new Error(`Failed to fetch lesson: ${response.status} ${errorText}`)
     }
     const data = await response.json()
     return data
@@ -100,46 +103,52 @@ export async function getGrammarLesson(lessonId: string) {
   }
 }
 
+// Backward compatibility alias
+export const getGrammarLesson = getLesson
+
 /**
- * Get grammar quiz by ID or lessonId
+ * Get lesson quiz by ID or lessonId
  */
-export async function getGrammarQuiz(quizIdOrLessonId: string, byLessonId: boolean = false) {
-  let url = `${API_BASE_URL}/grammar/quizzes/${quizIdOrLessonId}`
+export async function getLessonQuiz(quizIdOrLessonId: string, byLessonId: boolean = false) {
+  let url = `${API_BASE_URL}/lessons/quizzes/${quizIdOrLessonId}`
   if (byLessonId) {
-    url = `${API_BASE_URL}/grammar/quizzes/${quizIdOrLessonId}?lessonId=${quizIdOrLessonId}`
+    url = `${API_BASE_URL}/lessons/quizzes/${quizIdOrLessonId}?lessonId=${quizIdOrLessonId}`
   }
   const response = await fetch(url)
   if (!response.ok) {
     const errorText = await response.text()
-    throw new Error(`Failed to fetch grammar quiz: ${errorText}`)
+    throw new Error(`Failed to fetch lesson quiz: ${errorText}`)
   }
   return response.json()
 }
 
+// Backward compatibility alias
+export const getGrammarQuiz = getLessonQuiz
+
 /**
- * Get vocabulary words
+ * Get terms
  */
-export async function getVocabularyWords(params?: { word?: string; level?: string }) {
+export async function getTerms(params?: { term?: string; level?: string }) {
   const queryParams = new URLSearchParams()
-  if (params?.word) queryParams.append('word', params.word)
+  if (params?.term) queryParams.append('term', params.term)
   if (params?.level) queryParams.append('level', params.level)
   
-  const url = `${API_BASE_URL}/vocabulary/words${queryParams.toString() ? '?' + queryParams.toString() : ''}`
+  const url = `${API_BASE_URL}/terms${queryParams.toString() ? '?' + queryParams.toString() : ''}`
   const response = await fetch(url)
-  if (!response.ok) throw new Error('Failed to fetch vocabulary words')
+  if (!response.ok) throw new Error('Failed to fetch terms')
   return response.json()
 }
 
 /**
- * Get vocabulary quiz by ID
+ * Get terms quiz by ID
  */
-export async function getVocabularyQuiz(quizId: string) {
+export async function getTermsQuiz(quizId: string) {
   try {
-    const response = await fetch(`${API_BASE_URL}/vocabulary/quizzes/${quizId}`)
+    const response = await fetch(`${API_BASE_URL}/terms/quizzes/${quizId}`)
     if (!response.ok) {
       const errorText = await response.text()
       console.error('API Error:', response.status, errorText)
-      throw new Error(`Failed to fetch vocabulary quiz: ${response.status} ${errorText}`)
+      throw new Error(`Failed to fetch terms quiz: ${response.status} ${errorText}`)
     }
     const data = await response.json()
     return data
@@ -150,16 +159,16 @@ export async function getVocabularyQuiz(quizId: string) {
 }
 
 /**
- * Get vocabulary quizzes list
+ * Get terms quizzes list
  */
-export async function getVocabularyQuizzes(params?: { level?: string; category?: string }) {
+export async function getTermsQuizzes(params?: { level?: string; category?: string }) {
   const queryParams = new URLSearchParams()
   if (params?.level) queryParams.append('level', params.level)
   if (params?.category) queryParams.append('category', params.category)
   
-  const url = `${API_BASE_URL}/vocabulary/quizzes${queryParams.toString() ? '?' + queryParams.toString() : ''}`
+  const url = `${API_BASE_URL}/terms/quizzes${queryParams.toString() ? '?' + queryParams.toString() : ''}`
   const response = await fetch(url)
-  if (!response.ok) throw new Error('Failed to fetch vocabulary quizzes')
+  if (!response.ok) throw new Error('Failed to fetch terms quizzes')
   return response.json()
 }
 
@@ -194,41 +203,25 @@ export async function batchTranslate(text: string, targetLanguage: string = 'tr'
 /**
  * Admin API functions
  */
-export async function createGrammarLesson(lesson: any): Promise<any> {
-  const response = await fetch(`${API_BASE_URL}/admin/grammar`, {
+
+export async function createTerm(term: any): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/admin/terms`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(lesson),
+    body: JSON.stringify(term),
   })
 
   if (!response.ok) {
     const errorText = await response.text()
-    throw new Error(`Failed to create grammar lesson: ${errorText}`)
+    throw new Error(`Failed to create term: ${errorText}`)
   }
 
   return response.json()
 }
 
-export async function createVocabularyWord(word: any): Promise<any> {
-  const response = await fetch(`${API_BASE_URL}/admin/vocabulary`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(word),
-  })
-
-  if (!response.ok) {
-    const errorText = await response.text()
-    throw new Error(`Failed to create vocabulary word: ${errorText}`)
-  }
-
-  return response.json()
-}
-
-export async function bulkUpload(type: 'grammar_lessons' | 'vocabulary_words', items: any[]): Promise<any> {
+export async function bulkUpload(type: 'lessons' | 'terms', items: any[]): Promise<any> {
   const response = await fetch(`${API_BASE_URL}/admin/bulk`, {
     method: 'POST',
     headers: {
@@ -245,8 +238,8 @@ export async function bulkUpload(type: 'grammar_lessons' | 'vocabulary_words', i
   return response.json()
 }
 
-export async function createGrammarQuiz(quiz: any): Promise<any> {
-  const response = await fetch(`${API_BASE_URL}/admin/grammar/quiz`, {
+export async function createLessonQuiz(quiz: any): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/admin/lessons/quiz`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -256,14 +249,17 @@ export async function createGrammarQuiz(quiz: any): Promise<any> {
 
   if (!response.ok) {
     const errorText = await response.text()
-    throw new Error(`Failed to create grammar quiz: ${errorText}`)
+    throw new Error(`Failed to create lesson quiz: ${errorText}`)
   }
 
   return response.json()
 }
 
-export async function createVocabularyQuiz(quiz: any): Promise<any> {
-  const response = await fetch(`${API_BASE_URL}/admin/vocabulary/quiz`, {
+// Backward compatibility alias
+export const createGrammarQuiz = createLessonQuiz
+
+export async function createTermsQuiz(quiz: any): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/admin/terms/quiz`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -273,13 +269,13 @@ export async function createVocabularyQuiz(quiz: any): Promise<any> {
 
   if (!response.ok) {
     const errorText = await response.text()
-    throw new Error(`Failed to create vocabulary quiz: ${errorText}`)
+    throw new Error(`Failed to create terms quiz: ${errorText}`)
   }
 
   return response.json()
 }
 
-export async function cleanupDuplicates(table: 'grammar_lessons' | 'vocabulary_words'): Promise<any> {
+export async function cleanupDuplicates(table: 'lessons' | 'terms'): Promise<any> {
   const response = await fetch(`${API_BASE_URL}/admin/cleanup`, {
     method: 'POST',
     headers: {
@@ -424,6 +420,40 @@ export async function getImageUploadUrl(fileName: string, fileType: string): Pro
   if (!response.ok) {
     const errorText = await response.text()
     throw new Error(`Failed to get upload URL: ${errorText}`)
+  }
+  return response.json()
+}
+
+/**
+ * App Configuration API
+ */
+export interface AppConfig {
+  features: {
+    lessons: boolean
+    terms: boolean
+    quizzes: boolean
+  }
+  termsType?: 'formulas' | 'memorizing'
+}
+
+export async function getAppConfig(): Promise<{ config: AppConfig }> {
+  const response = await fetch(`${API_BASE_URL}/config`)
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw new Error(`Failed to fetch app config: ${errorText}`)
+  }
+  return response.json()
+}
+
+export async function updateAppConfig(config: AppConfig): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/config`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(config),
+  })
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw new Error(`Failed to update app config: ${errorText}`)
   }
   return response.json()
 }

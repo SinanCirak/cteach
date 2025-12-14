@@ -69,17 +69,17 @@ exports.handler = async (event) => {
       statusCode: 201,
       headers,
       body: JSON.stringify({
-        message: 'Grammar lesson created successfully',
+        message: 'Lesson created successfully',
         lesson
       })
     };
   } catch (error) {
-    console.error('Error creating grammar lesson:', error);
+    console.error('Error creating lesson:', error);
     return {
       statusCode: 500,
       headers,
       body: JSON.stringify({
-        error: 'Failed to create grammar lesson',
+        error: 'Failed to create lesson',
         message: error.message
       })
     };

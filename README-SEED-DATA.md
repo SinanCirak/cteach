@@ -1,48 +1,48 @@
 # Seed Data Upload Guide
 
-Bu dosya, hard-coded data'yı DynamoDB'ye yüklemek için kullanılır.
+This file is used to upload hard-coded data to DynamoDB.
 
-## Seed Data Dosyası
+## Seed Data File
 
-`seed-data.json` dosyası şu verileri içerir:
-- Grammar Lessons (6 ders)
-- Vocabulary Words (10 kelime)
-- Grammar Quizzes (2 quiz)
+The `seed-data.json` file contains the following data:
+- Grammar Lessons (6 lessons)
+- Vocabulary Words (10 words)
+- Grammar Quizzes (2 quizzes)
 - Vocabulary Quizzes (1 quiz)
 
-## Yükleme Yöntemleri
+## Upload Methods
 
-### Yöntem 1: Admin Panel Bulk Upload (Önerilen)
+### Method 1: Admin Panel Bulk Upload (Recommended)
 
-1. Admin paneline gidin: `https://tilgo.cirak.ca/admin`
-2. "Bulk Upload" sekmesine tıklayın
-3. `seed-data.json` dosyasını açın ve ilgili bölümleri kopyalayın
+1. Go to the admin panel: `https://cteach.cirak.ca/admin`
+2. Click on the "Bulk Upload" tab
+3. Open the `seed-data.json` file and copy the relevant sections
 
-#### Grammar Lessons Yükleme:
-- Type: `grammar_lessons` seçin
-- `seed-data.json` dosyasındaki `grammar_lessons` array'ini kopyalayıp yapıştırın
-- "Upload Bulk Data" butonuna tıklayın
+#### Uploading Grammar Lessons:
+- Select Type: `grammar_lessons`
+- Copy and paste the `grammar_lessons` array from the `seed-data.json` file
+- Click the "Upload Bulk Data" button
 
-#### Vocabulary Words Yükleme:
-- Type: `vocabulary_words` seçin
-- `seed-data.json` dosyasındaki `vocabulary_words` array'ini kopyalayıp yapıştırın
-- "Upload Bulk Data" butonuna tıklayın
+#### Uploading Vocabulary Words:
+- Select Type: `vocabulary_words`
+- Copy and paste the `vocabulary_words` array from the `seed-data.json` file
+- Click the "Upload Bulk Data" button
 
-#### Grammar Quizzes Yükleme:
-- "Grammar Quiz" sekmesine gidin
-- Her quiz için:
-  - Lesson ID'yi seçin (yüklenen lesson'lardan)
-  - Quiz başlığını girin
-  - Soruları ekleyin
-  - "Create Grammar Quiz" butonuna tıklayın
+#### Uploading Grammar Quizzes:
+- Go to the "Grammar Quiz" tab
+- For each quiz:
+  - Select the Lesson ID (from the uploaded lessons)
+  - Enter the quiz title
+  - Add questions
+  - Click the "Create Grammar Quiz" button
 
-#### Vocabulary Quizzes Yükleme:
-- "Vocabulary Quiz" sekmesine gidin
-- Quiz başlığını, level ve category'yi girin
-- Soruları ekleyin
-- "Create Vocabulary Quiz" butonuna tıklayın
+#### Uploading Vocabulary Quizzes:
+- Go to the "Vocabulary Quiz" tab
+- Enter the quiz title, level, and category
+- Add questions
+- Click the "Create Vocabulary Quiz" button
 
-### Yöntem 2: AWS CLI ile Direkt Yükleme
+### Method 2: Direct Upload via AWS CLI
 
 ```bash
 # Grammar Lessons
@@ -56,10 +56,8 @@ aws dynamodb batch-write-item \
   --region ca-central-1
 ```
 
-## Notlar
+## Notes
 
-- Grammar quizzes için önce grammar lessons'ın yüklenmiş olması gerekir
-- Vocabulary quizzes bağımsız olarak yüklenebilir
-- Bulk upload sonrası sayfayı yenileyin ve verilerin göründüğünü kontrol edin
-
-
+- Grammar lessons must be uploaded before grammar quizzes
+- Vocabulary quizzes can be uploaded independently
+- After bulk upload, refresh the page and verify that the data is displayed
