@@ -352,6 +352,89 @@ resource "aws_dynamodb_table" "word_translations" {
   }
 }
 
+# Levels Table (for managing difficulty levels)
+resource "aws_dynamodb_table" "levels" {
+  name           = "levels"
+  billing_mode   = "PAY_PER_REQUEST"
+  hash_key       = "levelId"
+
+  attribute {
+    name = "levelId"
+    type = "S"
+  }
+
+  attribute {
+    name = "order"
+    type = "N"
+  }
+
+  global_secondary_index {
+    name     = "order-index"
+    hash_key = "order"
+    projection_type = "ALL"
+  }
+
+  tags = {
+    Name        = "Levels"
+    Environment = var.environment
+  }
+}
+
+# Categories Table (for managing subjects like Math, Physics, Languages, etc.)
+resource "aws_dynamodb_table" "categories" {
+  name           = "categories"
+  billing_mode   = "PAY_PER_REQUEST"
+  hash_key       = "categoryId"
+
+  attribute {
+    name = "categoryId"
+    type = "S"
+  }
+
+  tags = {
+    Name        = "Categories"
+    Environment = var.environment
+  }
+}
+
+# S3 Bucket for Images
+resource "aws_s3_bucket" "tilgo_images" {
+  bucket = "${var.bucket_name}-images"
+
+  tags = {
+    Name        = "Tilgo Images"
+    Environment = var.environment
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "tilgo_images" {
+  bucket = aws_s3_bucket.tilgo_images.id
+
+  block_public_acls       = true
+  block_public_policy    = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_versioning" "tilgo_images" {
+  bucket = aws_s3_bucket.tilgo_images.id
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_s3_bucket_cors_configuration" "tilgo_images" {
+  bucket = aws_s3_bucket.tilgo_images.id
+
+  cors_rule {
+    allowed_headers = ["*"]
+    allowed_methods = ["GET", "PUT", "POST", "DELETE", "HEAD"]
+    allowed_origins = ["*"]
+    expose_headers  = ["ETag"]
+    max_age_seconds = 3000
+  }
+}
+
 # IAM Role for Lambda
 resource "aws_iam_role" "lambda_role" {
   name = "tilgo-lambda-role"
@@ -395,7 +478,23 @@ resource "aws_iam_role_policy" "lambda_dynamodb_policy" {
           aws_dynamodb_table.vocabulary_words.arn,
           "${aws_dynamodb_table.vocabulary_words.arn}/index/*",
           aws_dynamodb_table.vocabulary_quizzes.arn,
-          aws_dynamodb_table.word_translations.arn
+          aws_dynamodb_table.word_translations.arn,
+          aws_dynamodb_table.levels.arn,
+          "${aws_dynamodb_table.levels.arn}/index/*",
+          aws_dynamodb_table.categories.arn
+        ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:PutObject",
+          "s3:GetObject",
+          "s3:DeleteObject",
+          "s3:ListBucket"
+        ]
+        Resource = [
+          aws_s3_bucket.tilgo_images.arn,
+          "${aws_s3_bucket.tilgo_images.arn}/*"
         ]
       },
       {
@@ -495,6 +594,24 @@ data "archive_file" "cleanup_duplicates_zip" {
   type        = "zip"
   source_dir  = "${path.module}/../lambda/cleanup-duplicates"
   output_path = "${path.module}/lambda-packages/cleanup-duplicates.zip"
+}
+
+data "archive_file" "manage_levels_zip" {
+  type        = "zip"
+  source_dir  = "${path.module}/../lambda/manage-levels"
+  output_path = "${path.module}/lambda-packages/manage-levels.zip"
+}
+
+data "archive_file" "manage_categories_zip" {
+  type        = "zip"
+  source_dir  = "${path.module}/../lambda/manage-categories"
+  output_path = "${path.module}/lambda-packages/manage-categories.zip"
+}
+
+data "archive_file" "upload_image_zip" {
+  type        = "zip"
+  source_dir  = "${path.module}/../lambda/upload-image"
+  output_path = "${path.module}/lambda-packages/upload-image.zip"
 }
 
 # Lambda Functions
@@ -856,10 +973,98 @@ resource "aws_lambda_function" "cleanup_duplicates" {
   }
 }
 
+resource "aws_lambda_function" "manage_levels" {
+  filename         = data.archive_file.manage_levels_zip.output_path
+  function_name    = "tilgo-manage-levels"
+  role            = aws_iam_role.lambda_role.arn
+  handler         = "index.handler"
+  source_code_hash = data.archive_file.manage_levels_zip.output_base64sha256
+  runtime         = "nodejs18.x"
+  timeout         = 30
+
+  environment {
+    variables = {
+      LEVELS_TABLE = aws_dynamodb_table.levels.name
+    }
+  }
+
+  tags = {
+    Name        = "Manage Levels"
+    Environment = var.environment
+  }
+}
+
+resource "aws_lambda_function" "manage_categories" {
+  filename         = data.archive_file.manage_categories_zip.output_path
+  function_name    = "tilgo-manage-categories"
+  role            = aws_iam_role.lambda_role.arn
+  handler         = "index.handler"
+  source_code_hash = data.archive_file.manage_categories_zip.output_base64sha256
+  runtime         = "nodejs18.x"
+  timeout         = 30
+
+  environment {
+    variables = {
+      CATEGORIES_TABLE = aws_dynamodb_table.categories.name
+    }
+  }
+
+  tags = {
+    Name        = "Manage Categories"
+    Environment = var.environment
+  }
+}
+
+resource "aws_lambda_function" "upload_image" {
+  filename         = data.archive_file.upload_image_zip.output_path
+  function_name    = "tilgo-upload-image"
+  role            = aws_iam_role.lambda_role.arn
+  handler         = "index.handler"
+  source_code_hash = data.archive_file.upload_image_zip.output_base64sha256
+  runtime         = "nodejs18.x"
+  timeout         = 30
+
+  environment {
+    variables = {
+      IMAGES_BUCKET = aws_s3_bucket.tilgo_images.id
+      AWS_REGION    = var.aws_region
+    }
+  }
+
+  tags = {
+    Name        = "Upload Image"
+    Environment = var.environment
+  }
+}
+
 resource "aws_lambda_permission" "cleanup_duplicates_api" {
   statement_id  = "AllowExecutionFromAPIGateway"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.cleanup_duplicates.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.tilgo_api.execution_arn}/*/*"
+}
+
+resource "aws_lambda_permission" "manage_levels_api" {
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.manage_levels.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.tilgo_api.execution_arn}/*/*"
+}
+
+resource "aws_lambda_permission" "manage_categories_api" {
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.manage_categories.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.tilgo_api.execution_arn}/*/*"
+}
+
+resource "aws_lambda_permission" "upload_image_api" {
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.upload_image.function_name
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_api_gateway_rest_api.tilgo_api.execution_arn}/*/*"
 }
@@ -883,7 +1088,7 @@ resource "aws_lambda_permission" "create_vocabulary_quiz_api" {
 # API Gateway
 resource "aws_api_gateway_rest_api" "tilgo_api" {
   name        = "tilgo-api"
-  description = "API for Tilgo English Learning Platform"
+  description = "API for cteach Learning Platform"
 
   endpoint_configuration {
     types = ["REGIONAL"]
@@ -903,6 +1108,11 @@ resource "aws_api_gateway_deployment" "tilgo_api" {
       aws_api_gateway_resource.admin_grammar_quiz.id,
       aws_api_gateway_resource.admin_vocabulary_quiz.id,
       aws_api_gateway_resource.admin_cleanup.id,
+      aws_api_gateway_resource.admin_levels.id,
+      aws_api_gateway_resource.admin_level.id,
+      aws_api_gateway_resource.admin_categories.id,
+      aws_api_gateway_resource.admin_category.id,
+      aws_api_gateway_resource.admin_upload_image.id,
       aws_api_gateway_method.translate_word_get.id,
       aws_api_gateway_method.translate_batch_post.id,
       aws_api_gateway_method.grammar_lessons_get.id,
@@ -916,6 +1126,15 @@ resource "aws_api_gateway_deployment" "tilgo_api" {
       aws_api_gateway_method.admin_grammar_quiz_post.id,
       aws_api_gateway_method.admin_vocabulary_quiz_post.id,
       aws_api_gateway_method.admin_cleanup_post.id,
+      aws_api_gateway_method.admin_levels_get.id,
+      aws_api_gateway_method.admin_levels_post.id,
+      aws_api_gateway_method.admin_level_put.id,
+      aws_api_gateway_method.admin_level_delete.id,
+      aws_api_gateway_method.admin_categories_get.id,
+      aws_api_gateway_method.admin_categories_post.id,
+      aws_api_gateway_method.admin_category_put.id,
+      aws_api_gateway_method.admin_category_delete.id,
+      aws_api_gateway_method.admin_upload_image_post.id,
       aws_lambda_function.translate_word.id,
       aws_lambda_function.batch_translate.id,
       aws_lambda_function.get_grammar_lessons.id,
@@ -929,6 +1148,9 @@ resource "aws_api_gateway_deployment" "tilgo_api" {
       aws_lambda_function.create_grammar_quiz.id,
       aws_lambda_function.create_vocabulary_quiz.id,
       aws_lambda_function.cleanup_duplicates.id,
+      aws_lambda_function.manage_levels.id,
+      aws_lambda_function.manage_categories.id,
+      aws_lambda_function.upload_image.id,
     ]))
   }
 
@@ -1058,6 +1280,36 @@ resource "aws_api_gateway_resource" "admin_cleanup" {
   rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
   parent_id   = aws_api_gateway_resource.admin.id
   path_part   = "cleanup"
+}
+
+resource "aws_api_gateway_resource" "admin_levels" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  parent_id   = aws_api_gateway_resource.admin.id
+  path_part   = "levels"
+}
+
+resource "aws_api_gateway_resource" "admin_level" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  parent_id   = aws_api_gateway_resource.admin_levels.id
+  path_part   = "{levelId}"
+}
+
+resource "aws_api_gateway_resource" "admin_categories" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  parent_id   = aws_api_gateway_resource.admin.id
+  path_part   = "categories"
+}
+
+resource "aws_api_gateway_resource" "admin_category" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  parent_id   = aws_api_gateway_resource.admin_categories.id
+  path_part   = "{categoryId}"
+}
+
+resource "aws_api_gateway_resource" "admin_upload_image" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  parent_id   = aws_api_gateway_resource.admin.id
+  path_part   = "upload-image"
 }
 
 # CORS Configuration
@@ -1813,5 +2065,359 @@ resource "aws_api_gateway_integration_response" "admin_cleanup_options" {
     "method.response.header.Access-Control-Allow-Methods" = "'POST,OPTIONS'"
     "method.response.header.Access-Control-Allow-Origin"  = "'*'"
   }
+}
+
+# Levels API Gateway Methods
+resource "aws_api_gateway_method" "admin_levels_options" {
+  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id   = aws_api_gateway_resource.admin_levels.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "admin_levels_options" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.admin_levels.id
+  http_method = aws_api_gateway_method.admin_levels_options.http_method
+  type        = "MOCK"
+  request_templates = {
+    "application/json" = "{\"statusCode\": 200}"
+  }
+}
+
+resource "aws_api_gateway_method_response" "admin_levels_options" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.admin_levels.id
+  http_method = aws_api_gateway_method.admin_levels_options.http_method
+  status_code = "200"
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = true
+    "method.response.header.Access-Control-Allow-Methods" = true
+    "method.response.header.Access-Control-Allow-Origin"  = true
+  }
+}
+
+resource "aws_api_gateway_integration_response" "admin_levels_options" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.admin_levels.id
+  http_method = aws_api_gateway_method.admin_levels_options.http_method
+  status_code = aws_api_gateway_method_response.admin_levels_options.status_code
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+    "method.response.header.Access-Control-Allow-Methods" = "'GET,POST,PUT,DELETE,OPTIONS'"
+    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
+  }
+}
+
+resource "aws_api_gateway_method" "admin_levels_get" {
+  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id   = aws_api_gateway_resource.admin_levels.id
+  http_method   = "GET"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "admin_levels_get" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.admin_levels.id
+  http_method = aws_api_gateway_method.admin_levels_get.http_method
+  type        = "AWS_PROXY"
+  integration_http_method = "POST"
+  uri         = aws_lambda_function.manage_levels.invoke_arn
+}
+
+resource "aws_api_gateway_method" "admin_levels_post" {
+  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id   = aws_api_gateway_resource.admin_levels.id
+  http_method   = "POST"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "admin_levels_post" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.admin_levels.id
+  http_method = aws_api_gateway_method.admin_levels_post.http_method
+  type        = "AWS_PROXY"
+  integration_http_method = "POST"
+  uri         = aws_lambda_function.manage_levels.invoke_arn
+}
+
+# Level (single) API Gateway Methods
+resource "aws_api_gateway_method" "admin_level_options" {
+  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id   = aws_api_gateway_resource.admin_level.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "admin_level_options" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.admin_level.id
+  http_method = aws_api_gateway_method.admin_level_options.http_method
+  type        = "MOCK"
+  request_templates = {
+    "application/json" = "{\"statusCode\": 200}"
+  }
+}
+
+resource "aws_api_gateway_method_response" "admin_level_options" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.admin_level.id
+  http_method = aws_api_gateway_method.admin_level_options.http_method
+  status_code = "200"
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = true
+    "method.response.header.Access-Control-Allow-Methods" = true
+    "method.response.header.Access-Control-Allow-Origin"  = true
+  }
+}
+
+resource "aws_api_gateway_integration_response" "admin_level_options" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.admin_level.id
+  http_method = aws_api_gateway_method.admin_level_options.http_method
+  status_code = aws_api_gateway_method_response.admin_level_options.status_code
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+    "method.response.header.Access-Control-Allow-Methods" = "'PUT,DELETE,OPTIONS'"
+    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
+  }
+}
+
+resource "aws_api_gateway_method" "admin_level_put" {
+  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id   = aws_api_gateway_resource.admin_level.id
+  http_method   = "PUT"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "admin_level_put" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.admin_level.id
+  http_method = aws_api_gateway_method.admin_level_put.http_method
+  type        = "AWS_PROXY"
+  integration_http_method = "POST"
+  uri         = aws_lambda_function.manage_levels.invoke_arn
+}
+
+resource "aws_api_gateway_method" "admin_level_delete" {
+  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id   = aws_api_gateway_resource.admin_level.id
+  http_method   = "DELETE"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "admin_level_delete" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.admin_level.id
+  http_method = aws_api_gateway_method.admin_level_delete.http_method
+  type        = "AWS_PROXY"
+  integration_http_method = "POST"
+  uri         = aws_lambda_function.manage_levels.invoke_arn
+}
+
+# Categories API Gateway Methods
+resource "aws_api_gateway_method" "admin_categories_options" {
+  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id   = aws_api_gateway_resource.admin_categories.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "admin_categories_options" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.admin_categories.id
+  http_method = aws_api_gateway_method.admin_categories_options.http_method
+  type        = "MOCK"
+  request_templates = {
+    "application/json" = "{\"statusCode\": 200}"
+  }
+}
+
+resource "aws_api_gateway_method_response" "admin_categories_options" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.admin_categories.id
+  http_method = aws_api_gateway_method.admin_categories_options.http_method
+  status_code = "200"
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = true
+    "method.response.header.Access-Control-Allow-Methods" = true
+    "method.response.header.Access-Control-Allow-Origin"  = true
+  }
+}
+
+resource "aws_api_gateway_integration_response" "admin_categories_options" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.admin_categories.id
+  http_method = aws_api_gateway_method.admin_categories_options.http_method
+  status_code = aws_api_gateway_method_response.admin_categories_options.status_code
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+    "method.response.header.Access-Control-Allow-Methods" = "'GET,POST,PUT,DELETE,OPTIONS'"
+    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
+  }
+}
+
+resource "aws_api_gateway_method" "admin_categories_get" {
+  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id   = aws_api_gateway_resource.admin_categories.id
+  http_method   = "GET"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "admin_categories_get" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.admin_categories.id
+  http_method = aws_api_gateway_method.admin_categories_get.http_method
+  type        = "AWS_PROXY"
+  integration_http_method = "POST"
+  uri         = aws_lambda_function.manage_categories.invoke_arn
+}
+
+resource "aws_api_gateway_method" "admin_categories_post" {
+  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id   = aws_api_gateway_resource.admin_categories.id
+  http_method   = "POST"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "admin_categories_post" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.admin_categories.id
+  http_method = aws_api_gateway_method.admin_categories_post.http_method
+  type        = "AWS_PROXY"
+  integration_http_method = "POST"
+  uri         = aws_lambda_function.manage_categories.invoke_arn
+}
+
+# Category (single) API Gateway Methods
+resource "aws_api_gateway_method" "admin_category_options" {
+  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id   = aws_api_gateway_resource.admin_category.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "admin_category_options" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.admin_category.id
+  http_method = aws_api_gateway_method.admin_category_options.http_method
+  type        = "MOCK"
+  request_templates = {
+    "application/json" = "{\"statusCode\": 200}"
+  }
+}
+
+resource "aws_api_gateway_method_response" "admin_category_options" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.admin_category.id
+  http_method = aws_api_gateway_method.admin_category_options.http_method
+  status_code = "200"
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = true
+    "method.response.header.Access-Control-Allow-Methods" = true
+    "method.response.header.Access-Control-Allow-Origin"  = true
+  }
+}
+
+resource "aws_api_gateway_integration_response" "admin_category_options" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.admin_category.id
+  http_method = aws_api_gateway_method.admin_category_options.http_method
+  status_code = aws_api_gateway_method_response.admin_category_options.status_code
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+    "method.response.header.Access-Control-Allow-Methods" = "'PUT,DELETE,OPTIONS'"
+    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
+  }
+}
+
+resource "aws_api_gateway_method" "admin_category_put" {
+  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id   = aws_api_gateway_resource.admin_category.id
+  http_method   = "PUT"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "admin_category_put" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.admin_category.id
+  http_method = aws_api_gateway_method.admin_category_put.http_method
+  type        = "AWS_PROXY"
+  integration_http_method = "POST"
+  uri         = aws_lambda_function.manage_categories.invoke_arn
+}
+
+resource "aws_api_gateway_method" "admin_category_delete" {
+  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id   = aws_api_gateway_resource.admin_category.id
+  http_method   = "DELETE"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "admin_category_delete" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.admin_category.id
+  http_method = aws_api_gateway_method.admin_category_delete.http_method
+  type        = "AWS_PROXY"
+  integration_http_method = "POST"
+  uri         = aws_lambda_function.manage_categories.invoke_arn
+}
+
+# Upload Image API Gateway Methods
+resource "aws_api_gateway_method" "admin_upload_image_options" {
+  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id   = aws_api_gateway_resource.admin_upload_image.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "admin_upload_image_options" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.admin_upload_image.id
+  http_method = aws_api_gateway_method.admin_upload_image_options.http_method
+  type        = "MOCK"
+  request_templates = {
+    "application/json" = "{\"statusCode\": 200}"
+  }
+}
+
+resource "aws_api_gateway_method_response" "admin_upload_image_options" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.admin_upload_image.id
+  http_method = aws_api_gateway_method.admin_upload_image_options.http_method
+  status_code = "200"
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = true
+    "method.response.header.Access-Control-Allow-Methods" = true
+    "method.response.header.Access-Control-Allow-Origin"  = true
+  }
+}
+
+resource "aws_api_gateway_integration_response" "admin_upload_image_options" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.admin_upload_image.id
+  http_method = aws_api_gateway_method.admin_upload_image_options.http_method
+  status_code = aws_api_gateway_method_response.admin_upload_image_options.status_code
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+    "method.response.header.Access-Control-Allow-Methods" = "'POST,OPTIONS'"
+    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
+  }
+}
+
+resource "aws_api_gateway_method" "admin_upload_image_post" {
+  rest_api_id   = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id   = aws_api_gateway_resource.admin_upload_image.id
+  http_method   = "POST"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "admin_upload_image_post" {
+  rest_api_id = aws_api_gateway_rest_api.tilgo_api.id
+  resource_id = aws_api_gateway_resource.admin_upload_image.id
+  http_method = aws_api_gateway_method.admin_upload_image_post.http_method
+  type        = "AWS_PROXY"
+  integration_http_method = "POST"
+  uri         = aws_lambda_function.upload_image.invoke_arn
 }
 

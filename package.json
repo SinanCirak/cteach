@@ -1,8 +1,8 @@
 {
-  "name": "tilgo",
+  "name": "cteach",
   "version": "1.0.0",
   "type": "module",
-  "description": "English learning platform for grammar and vocabulary",
+  "description": "SaaS learning platform for any subject - English, Math, Physics, Languages and more",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",

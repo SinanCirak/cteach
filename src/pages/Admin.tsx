@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
-import { createGrammarLesson, createVocabularyWord, bulkUpload, createGrammarQuiz, createVocabularyQuiz, getGrammarLessons, cleanupDuplicates } from '../utils/api'
+import { createGrammarLesson, createVocabularyWord, bulkUpload, createGrammarQuiz, createVocabularyQuiz, getGrammarLessons, cleanupDuplicates, getLevels, createLevel, updateLevel, deleteLevel, getCategories, createCategory, updateCategory, deleteCategory, getImageUploadUrl, type Level, type Category } from '../utils/api'
 
-type TabType = 'grammar' | 'vocabulary' | 'bulk' | 'grammar-quiz' | 'vocabulary-quiz'
+type TabType = 'grammar' | 'vocabulary' | 'bulk' | 'grammar-quiz' | 'vocabulary-quiz' | 'levels' | 'categories' | 'images'
 
 export default function Admin() {
   const [activeTab, setActiveTab] = useState<TabType>('grammar')
@@ -62,6 +62,20 @@ export default function Admin() {
   // Available lessons for quiz
   const [availableLessons, setAvailableLessons] = useState<Array<{ lessonId: string; title: string }>>([])
 
+  // Levels management
+  const [levels, setLevels] = useState<Level[]>([])
+  const [levelForm, setLevelForm] = useState({ name: '', description: '', order: 0, color: 'bg-gray-100', textColor: 'text-gray-700' })
+  const [editingLevel, setEditingLevel] = useState<Level | null>(null)
+
+  // Categories management
+  const [categories, setCategories] = useState<Category[]>([])
+  const [categoryForm, setCategoryForm] = useState({ name: '', description: '', icon: '📚', color: 'bg-blue-100', textColor: 'text-blue-700' })
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null)
+
+  // Image upload
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null)
+
   useEffect(() => {
     // Load available grammar lessons (only when grammar-quiz tab is active)
     if (activeTab === 'grammar-quiz') {
@@ -74,6 +88,32 @@ export default function Admin() {
         .catch((err) => {
           console.error('Failed to load lessons:', err)
           // Don't block page rendering on error
+        })
+    }
+    
+    // Load levels when levels tab is active
+    if (activeTab === 'levels') {
+      getLevels()
+        .then((data) => {
+          if (data && data.levels) {
+            setLevels(data.levels)
+          }
+        })
+        .catch((err) => {
+          console.error('Failed to load levels:', err)
+        })
+    }
+    
+    // Load categories when categories tab is active
+    if (activeTab === 'categories') {
+      getCategories()
+        .then((data) => {
+          if (data && data.categories) {
+            setCategories(data.categories)
+          }
+        })
+        .catch((err) => {
+          console.error('Failed to load categories:', err)
         })
     }
   }, [activeTab])
@@ -225,6 +265,36 @@ export default function Admin() {
               }`}
             >
               Vocabulary Quiz
+            </button>
+            <button
+              onClick={() => setActiveTab('levels')}
+              className={`px-6 py-3 font-semibold transition-colors ${
+                activeTab === 'levels'
+                  ? 'text-primary-600 border-b-2 border-primary-600'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              Levels
+            </button>
+            <button
+              onClick={() => setActiveTab('categories')}
+              className={`px-6 py-3 font-semibold transition-colors ${
+                activeTab === 'categories'
+                  ? 'text-primary-600 border-b-2 border-primary-600'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              Categories
+            </button>
+            <button
+              onClick={() => setActiveTab('images')}
+              className={`px-6 py-3 font-semibold transition-colors ${
+                activeTab === 'images'
+                  ? 'text-primary-600 border-b-2 border-primary-600'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              Images
             </button>
           </div>
 
@@ -1263,6 +1333,464 @@ export default function Admin() {
               >
                 {loading ? 'Creating...' : 'Create Vocabulary Quiz'}
               </button>
+            </div>
+          )}
+
+          {/* Levels Management */}
+          {activeTab === 'levels' && (
+            <div className="space-y-6">
+              <div className="bg-blue-50 p-4 rounded-lg mb-6">
+                <h2 className="text-xl font-bold text-gray-900 mb-2">Manage Levels</h2>
+                <p className="text-sm text-gray-600">Create and manage difficulty levels (Beginner, Elementary, Intermediate, etc.)</p>
+              </div>
+
+              {/* Level Form */}
+              <div className="bg-white border-2 border-gray-200 rounded-lg p-6 mb-6">
+                <h3 className="text-lg font-semibold mb-4">{editingLevel ? 'Edit Level' : 'Create New Level'}</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Name *</label>
+                    <input
+                      type="text"
+                      value={levelForm.name}
+                      onChange={(e) => setLevelForm({ ...levelForm, name: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                      placeholder="e.g., Beginner"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Order *</label>
+                    <input
+                      type="number"
+                      value={levelForm.order}
+                      onChange={(e) => setLevelForm({ ...levelForm, order: parseInt(e.target.value) || 0 })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                    <input
+                      type="text"
+                      value={levelForm.description}
+                      onChange={(e) => setLevelForm({ ...levelForm, description: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                      placeholder="Optional description"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Background Color (Tailwind class)</label>
+                    <input
+                      type="text"
+                      value={levelForm.color}
+                      onChange={(e) => setLevelForm({ ...levelForm, color: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                      placeholder="bg-green-100"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Text Color (Tailwind class)</label>
+                    <input
+                      type="text"
+                      value={levelForm.textColor}
+                      onChange={(e) => setLevelForm({ ...levelForm, textColor: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                      placeholder="text-green-700"
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-3 mt-4">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (!levelForm.name || levelForm.order === undefined) {
+                        showMessage('error', 'Name and order are required')
+                        return
+                      }
+                      try {
+                        setLoading(true)
+                        if (editingLevel) {
+                          await updateLevel(editingLevel.levelId, levelForm)
+                          showMessage('success', 'Level updated successfully!')
+                        } else {
+                          await createLevel(levelForm)
+                          showMessage('success', 'Level created successfully!')
+                        }
+                        setLevelForm({ name: '', description: '', order: 0, color: 'bg-gray-100', textColor: 'text-gray-700' })
+                        setEditingLevel(null)
+                        const data = await getLevels()
+                        if (data && data.levels) {
+                          setLevels(data.levels)
+                        }
+                      } catch (error: any) {
+                        showMessage('error', error.message || 'Failed to save level')
+                      } finally {
+                        setLoading(false)
+                      }
+                    }}
+                    className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                    disabled={loading}
+                  >
+                    {editingLevel ? 'Update Level' : 'Create Level'}
+                  </button>
+                  {editingLevel && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingLevel(null)
+                        setLevelForm({ name: '', description: '', order: 0, color: 'bg-gray-100', textColor: 'text-gray-700' })
+                      }}
+                      className="px-6 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Levels List */}
+              <div className="bg-white border-2 border-gray-200 rounded-lg p-6">
+                <h3 className="text-lg font-semibold mb-4">Existing Levels</h3>
+                {levels.length === 0 ? (
+                  <p className="text-gray-500 text-center py-8">No levels created yet. Create your first level above.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {levels.sort((a, b) => (a.order || 0) - (b.order || 0)).map((level) => (
+                      <div key={level.levelId} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
+                        <div className="flex items-center gap-4">
+                          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${level.color || 'bg-gray-100'} ${level.textColor || 'text-gray-700'}`}>
+                            {level.name}
+                          </span>
+                          <span className="text-sm text-gray-600">Order: {level.order}</span>
+                          {level.description && <span className="text-sm text-gray-500">{level.description}</span>}
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => {
+                              setEditingLevel(level)
+                              setLevelForm({
+                                name: level.name,
+                                description: level.description || '',
+                                order: level.order,
+                                color: level.color || 'bg-gray-100',
+                                textColor: level.textColor || 'text-gray-700'
+                              })
+                            }}
+                            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-sm"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={async () => {
+                              if (confirm(`Are you sure you want to delete "${level.name}"?`)) {
+                                try {
+                                  setLoading(true)
+                                  await deleteLevel(level.levelId)
+                                  showMessage('success', 'Level deleted successfully!')
+                                  const data = await getLevels()
+                                  if (data && data.levels) {
+                                    setLevels(data.levels)
+                                  }
+                                } catch (error: any) {
+                                  showMessage('error', error.message || 'Failed to delete level')
+                                } finally {
+                                  setLoading(false)
+                                }
+                              }
+                            }}
+                            className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 text-sm"
+                            disabled={loading}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Categories Management */}
+          {activeTab === 'categories' && (
+            <div className="space-y-6">
+              <div className="bg-purple-50 p-4 rounded-lg mb-6">
+                <h2 className="text-xl font-bold text-gray-900 mb-2">Manage Categories</h2>
+                <p className="text-sm text-gray-600">Create and manage subject categories (Math, Physics, Languages, etc.)</p>
+              </div>
+
+              {/* Category Form */}
+              <div className="bg-white border-2 border-gray-200 rounded-lg p-6 mb-6">
+                <h3 className="text-lg font-semibold mb-4">{editingCategory ? 'Edit Category' : 'Create New Category'}</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Name *</label>
+                    <input
+                      type="text"
+                      value={categoryForm.name}
+                      onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                      placeholder="e.g., Mathematics"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Icon (Emoji)</label>
+                    <input
+                      type="text"
+                      value={categoryForm.icon}
+                      onChange={(e) => setCategoryForm({ ...categoryForm, icon: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                      placeholder="📚"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                    <input
+                      type="text"
+                      value={categoryForm.description}
+                      onChange={(e) => setCategoryForm({ ...categoryForm, description: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                      placeholder="Optional description"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Background Color (Tailwind class)</label>
+                    <input
+                      type="text"
+                      value={categoryForm.color}
+                      onChange={(e) => setCategoryForm({ ...categoryForm, color: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                      placeholder="bg-blue-100"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Text Color (Tailwind class)</label>
+                    <input
+                      type="text"
+                      value={categoryForm.textColor}
+                      onChange={(e) => setCategoryForm({ ...categoryForm, textColor: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                      placeholder="text-blue-700"
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-3 mt-4">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (!categoryForm.name) {
+                        showMessage('error', 'Name is required')
+                        return
+                      }
+                      try {
+                        setLoading(true)
+                        if (editingCategory) {
+                          await updateCategory(editingCategory.categoryId, categoryForm)
+                          showMessage('success', 'Category updated successfully!')
+                        } else {
+                          await createCategory(categoryForm)
+                          showMessage('success', 'Category created successfully!')
+                        }
+                        setCategoryForm({ name: '', description: '', icon: '📚', color: 'bg-blue-100', textColor: 'text-blue-700' })
+                        setEditingCategory(null)
+                        const data = await getCategories()
+                        if (data && data.categories) {
+                          setCategories(data.categories)
+                        }
+                      } catch (error: any) {
+                        showMessage('error', error.message || 'Failed to save category')
+                      } finally {
+                        setLoading(false)
+                      }
+                    }}
+                    className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+                    disabled={loading}
+                  >
+                    {editingCategory ? 'Update Category' : 'Create Category'}
+                  </button>
+                  {editingCategory && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingCategory(null)
+                        setCategoryForm({ name: '', description: '', icon: '📚', color: 'bg-blue-100', textColor: 'text-blue-700' })
+                      }}
+                      className="px-6 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Categories List */}
+              <div className="bg-white border-2 border-gray-200 rounded-lg p-6">
+                <h3 className="text-lg font-semibold mb-4">Existing Categories</h3>
+                {categories.length === 0 ? (
+                  <p className="text-gray-500 text-center py-8">No categories created yet. Create your first category above.</p>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {categories.map((category) => (
+                      <div key={category.categoryId} className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-3">
+                            <span className="text-2xl">{category.icon || '📚'}</span>
+                            <span className={`px-3 py-1 rounded-full text-sm font-semibold ${category.color || 'bg-blue-100'} ${category.textColor || 'text-blue-700'}`}>
+                              {category.name}
+                            </span>
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => {
+                                setEditingCategory(category)
+                                setCategoryForm({
+                                  name: category.name,
+                                  description: category.description || '',
+                                  icon: category.icon || '📚',
+                                  color: category.color || 'bg-blue-100',
+                                  textColor: category.textColor || 'text-blue-700'
+                                })
+                              }}
+                              className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-xs"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={async () => {
+                                if (confirm(`Are you sure you want to delete "${category.name}"?`)) {
+                                  try {
+                                    setLoading(true)
+                                    await deleteCategory(category.categoryId)
+                                    showMessage('success', 'Category deleted successfully!')
+                                    const data = await getCategories()
+                                    if (data && data.categories) {
+                                      setCategories(data.categories)
+                                    }
+                                  } catch (error: any) {
+                                    showMessage('error', error.message || 'Failed to delete category')
+                                  } finally {
+                                    setLoading(false)
+                                  }
+                                }
+                              }}
+                              className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-xs"
+                              disabled={loading}
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                        {category.description && (
+                          <p className="text-sm text-gray-600 mt-2">{category.description}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Image Upload */}
+          {activeTab === 'images' && (
+            <div className="space-y-6">
+              <div className="bg-green-50 p-4 rounded-lg mb-6">
+                <h2 className="text-xl font-bold text-gray-900 mb-2">Upload Images</h2>
+                <p className="text-sm text-gray-600">Upload images for your lessons and content. Supported formats: JPEG, PNG, GIF, WebP</p>
+              </div>
+
+              <div className="bg-white border-2 border-gray-200 rounded-lg p-6">
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Select Image</label>
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (file) {
+                          setSelectedFile(file)
+                          setUploadedImageUrl(null)
+                        }
+                      }}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                    />
+                  </div>
+
+                  {selectedFile && (
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <p className="text-sm text-gray-600 mb-2">
+                        <strong>File:</strong> {selectedFile.name} ({(selectedFile.size / 1024).toFixed(2)} KB)
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        <strong>Type:</strong> {selectedFile.type}
+                      </p>
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (!selectedFile) {
+                        showMessage('error', 'Please select an image file')
+                        return
+                      }
+                      try {
+                        setLoading(true)
+                        // Get presigned URL
+                        const { uploadUrl, fileUrl } = await getImageUploadUrl(selectedFile.name, selectedFile.type)
+                        
+                        // Upload to S3
+                        const uploadResponse = await fetch(uploadUrl, {
+                          method: 'PUT',
+                          headers: {
+                            'Content-Type': selectedFile.type,
+                          },
+                          body: selectedFile,
+                        })
+
+                        if (!uploadResponse.ok) {
+                          throw new Error('Failed to upload image to S3')
+                        }
+
+                        setUploadedImageUrl(fileUrl)
+                        showMessage('success', 'Image uploaded successfully!')
+                        setSelectedFile(null)
+                      } catch (error: any) {
+                        showMessage('error', error.message || 'Failed to upload image')
+                      } finally {
+                        setLoading(false)
+                      }
+                    }}
+                    className="w-full px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-semibold"
+                    disabled={loading || !selectedFile}
+                  >
+                    {loading ? 'Uploading...' : 'Upload Image'}
+                  </button>
+
+                  {uploadedImageUrl && (
+                    <div className="bg-green-50 p-4 rounded-lg border-2 border-green-200">
+                      <p className="text-sm font-semibold text-green-800 mb-2">Image uploaded successfully!</p>
+                      <div className="bg-white p-3 rounded border border-green-300 mb-3">
+                        <p className="text-xs text-gray-600 mb-1">Image URL:</p>
+                        <code className="text-xs break-all text-gray-800">{uploadedImageUrl}</code>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <img src={uploadedImageUrl} alt="Uploaded" className="max-w-xs max-h-48 rounded-lg border border-gray-300" />
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(uploadedImageUrl)
+                            showMessage('success', 'URL copied to clipboard!')
+                          }}
+                          className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 text-sm"
+                        >
+                          Copy URL
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           )}
         </div>

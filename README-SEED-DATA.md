@@ -62,3 +62,4 @@ aws dynamodb batch-write-item \
 - Vocabulary quizzes bağımsız olarak yüklenebilir
 - Bulk upload sonrası sayfayı yenileyin ve verilerin göründüğünü kontrol edin
 
+

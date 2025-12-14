@@ -19,10 +19,10 @@ export default function Layout({ children }: LayoutProps) {
               <Link to="/" className="flex items-center space-x-2 sm:space-x-3 hover:opacity-90 transition-opacity group">
                 <img 
                   src="/logo-icon.svg" 
-                  alt="Tilgo Logo" 
+                  alt="cteach Logo" 
                   className="w-10 h-10 sm:w-12 sm:h-12 group-hover:scale-105 transition-transform"
                 />
-                <span className="text-xl sm:text-2xl font-bold text-gray-800">tilgo</span>
+                <span className="text-xl sm:text-2xl font-bold text-gray-800">cteach</span>
               </Link>
             </div>
             

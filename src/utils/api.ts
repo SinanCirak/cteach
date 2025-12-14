@@ -101,11 +101,18 @@ export async function getGrammarLesson(lessonId: string) {
 }
 
 /**
- * Get grammar quiz by ID
+ * Get grammar quiz by ID or lessonId
  */
-export async function getGrammarQuiz(quizId: string) {
-  const response = await fetch(`${API_BASE_URL}/grammar/quizzes/${quizId}`)
-  if (!response.ok) throw new Error('Failed to fetch grammar quiz')
+export async function getGrammarQuiz(quizIdOrLessonId: string, byLessonId: boolean = false) {
+  let url = `${API_BASE_URL}/grammar/quizzes/${quizIdOrLessonId}`
+  if (byLessonId) {
+    url = `${API_BASE_URL}/grammar/quizzes/${quizIdOrLessonId}?lessonId=${quizIdOrLessonId}`
+  }
+  const response = await fetch(url)
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw new Error(`Failed to fetch grammar quiz: ${errorText}`)
+  }
   return response.json()
 }
 
@@ -286,6 +293,138 @@ export async function cleanupDuplicates(table: 'grammar_lessons' | 'vocabulary_w
     throw new Error(`Failed to cleanup duplicates: ${errorText}`)
   }
 
+  return response.json()
+}
+
+/**
+ * Level Management API
+ */
+export interface Level {
+  levelId: string
+  name: string
+  description?: string
+  order: number
+  color?: string
+  textColor?: string
+}
+
+export async function getLevels(): Promise<{ levels: Level[]; count: number }> {
+  const response = await fetch(`${API_BASE_URL}/admin/levels`)
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw new Error(`Failed to fetch levels: ${errorText}`)
+  }
+  return response.json()
+}
+
+export async function createLevel(level: Omit<Level, 'levelId'>): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/admin/levels`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(level),
+  })
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw new Error(`Failed to create level: ${errorText}`)
+  }
+  return response.json()
+}
+
+export async function updateLevel(levelId: string, level: Partial<Level>): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/admin/levels/${levelId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(level),
+  })
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw new Error(`Failed to update level: ${errorText}`)
+  }
+  return response.json()
+}
+
+export async function deleteLevel(levelId: string): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/admin/levels/${levelId}`, {
+    method: 'DELETE',
+  })
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw new Error(`Failed to delete level: ${errorText}`)
+  }
+  return response.json()
+}
+
+/**
+ * Category Management API
+ */
+export interface Category {
+  categoryId: string
+  name: string
+  description?: string
+  icon?: string
+  color?: string
+  textColor?: string
+}
+
+export async function getCategories(): Promise<{ categories: Category[]; count: number }> {
+  const response = await fetch(`${API_BASE_URL}/admin/categories`)
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw new Error(`Failed to fetch categories: ${errorText}`)
+  }
+  return response.json()
+}
+
+export async function createCategory(category: Omit<Category, 'categoryId'>): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/admin/categories`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(category),
+  })
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw new Error(`Failed to create category: ${errorText}`)
+  }
+  return response.json()
+}
+
+export async function updateCategory(categoryId: string, category: Partial<Category>): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/admin/categories/${categoryId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(category),
+  })
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw new Error(`Failed to update category: ${errorText}`)
+  }
+  return response.json()
+}
+
+export async function deleteCategory(categoryId: string): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/admin/categories/${categoryId}`, {
+    method: 'DELETE',
+  })
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw new Error(`Failed to delete category: ${errorText}`)
+  }
+  return response.json()
+}
+
+/**
+ * Image Upload API
+ */
+export async function getImageUploadUrl(fileName: string, fileType: string): Promise<{ uploadUrl: string; fileKey: string; fileUrl: string }> {
+  const response = await fetch(`${API_BASE_URL}/admin/upload-image`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fileName, fileType }),
+  })
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw new Error(`Failed to get upload URL: ${errorText}`)
+  }
   return response.json()
 }
 

@@ -34,7 +34,7 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [selectedLanguage, setSelectedLanguage] = useState<Language>(() => {
     // Load from localStorage or default to English (Canada's primary language)
-    const saved = localStorage.getItem('tilgo-language')
+    const saved = localStorage.getItem('cteach-language')
     if (saved) {
       const lang = languages.find(l => l.code === saved)
       if (lang) return lang
@@ -44,7 +44,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
   const handleSetLanguage = (language: Language) => {
     setSelectedLanguage(language)
-    localStorage.setItem('tilgo-language', language.code)
+    localStorage.setItem('cteach-language', language.code)
   }
 
   return (

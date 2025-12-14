@@ -31,10 +31,8 @@ export default function GrammarQuiz() {
       
       try {
         setLoading(true)
-        // First, we need to find the quiz by lessonId
-        // For now, we'll use lessonId as quizId (you may need to adjust this based on your data structure)
-        // TODO: Add API endpoint to get quiz by lessonId
-        const data = await getGrammarQuiz(lessonId)
+        // Get quiz by lessonId
+        const data = await getGrammarQuiz(lessonId, true)
         setQuiz(data)
       } catch (err: any) {
         console.error('Failed to fetch quiz:', err)

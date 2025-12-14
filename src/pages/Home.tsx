@@ -6,10 +6,10 @@ export default function Home() {
       {/* Hero Section */}
       <div className="text-center space-y-4 sm:space-y-6">
         <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 px-4">
-          Welcome to <span className="text-primary-600">Tilgo</span>
+          Welcome to <span className="text-primary-600">cteach</span>
         </h1>
         <p className="text-base sm:text-lg md:text-xl text-gray-600 max-w-2xl mx-auto px-4">
-          Master English grammar and expand your vocabulary with interactive lessons and quizzes
+          Learn any subject with interactive lessons, quizzes, and comprehensive content. Perfect for English, Math, Physics, Languages, and more.
         </p>
       </div>
 

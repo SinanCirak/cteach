@@ -12,6 +12,7 @@ interface Lesson {
   uses: { icon: string; title: string; description: string; example: string }[]
   examples: { sentence: string; explanation: string }[]
   tips?: string[]
+  [key: string]: any // Allow any additional fields like pronouns, forms, etc.
 }
 
 export default function GrammarLesson() {
@@ -31,7 +32,8 @@ export default function GrammarLesson() {
         
         // Ensure all required fields have default values
         if (data) {
-          setLesson({
+          // Get all fields from data, including dynamic ones
+          const lessonData: any = {
             lessonId: data.lessonId || lessonId,
             title: data.title || 'Untitled Lesson',
             subtitle: data.subtitle || '',
@@ -40,7 +42,16 @@ export default function GrammarLesson() {
             uses: Array.isArray(data.uses) ? data.uses : [],
             examples: Array.isArray(data.examples) ? data.examples : [],
             tips: Array.isArray(data.tips) ? data.tips : [],
+          }
+          
+          // Add all other dynamic fields (pronouns, forms, etc.)
+          Object.keys(data).forEach(key => {
+            if (!['lessonId', 'title', 'subtitle', 'content', 'formula', 'uses', 'examples', 'tips', 'level', 'order', 'createdAt', 'updatedAt'].includes(key)) {
+              lessonData[key] = data[key]
+            }
           })
+          
+          setLesson(lessonData)
         } else {
           setError('Lesson data is empty')
         }
@@ -235,6 +246,135 @@ export default function GrammarLesson() {
           </div>
         </div>
       )}
+
+      {/* Dynamic Content Sections */}
+      {(() => {
+        // Known fields that have special rendering
+        const knownFields = ['content', 'formula', 'uses', 'examples', 'tips', 'lessonId', 'title', 'subtitle', 'level', 'order', 'createdAt', 'updatedAt']
+        
+        // Get all dynamic fields (not in knownFields)
+        const dynamicFields = Object.keys(lesson).filter(key => !knownFields.includes(key))
+        
+        return dynamicFields.map(fieldName => {
+          const fieldValue = lesson[fieldName]
+          
+          // Skip if not an array or empty
+          if (!Array.isArray(fieldValue) || fieldValue.length === 0) {
+            return null
+          }
+          
+          // Determine field type based on first item structure
+          const firstItem = fieldValue[0]
+          const isObject = typeof firstItem === 'object' && firstItem !== null
+          
+          // Capitalize field name for display
+          const displayName = fieldName.charAt(0).toUpperCase() + fieldName.slice(1).replace(/([A-Z])/g, ' $1')
+          
+          // Color scheme based on field name
+          const getColorScheme = (name: string) => {
+            const lower = name.toLowerCase()
+            if (lower.includes('pronoun')) return { bg: 'bg-indigo-100', text: 'text-indigo-600', border: 'border-indigo-500' }
+            if (lower.includes('form')) return { bg: 'bg-purple-100', text: 'text-purple-600', border: 'border-purple-500' }
+            if (lower.includes('verb')) return { bg: 'bg-blue-100', text: 'text-blue-600', border: 'border-blue-500' }
+            if (lower.includes('noun')) return { bg: 'bg-green-100', text: 'text-green-600', border: 'border-green-500' }
+            return { bg: 'bg-gray-100', text: 'text-gray-600', border: 'border-gray-500' }
+          }
+          
+          const colors = getColorScheme(fieldName)
+          
+          return (
+            <div key={fieldName}>
+              <div className="flex items-center mb-4 sm:mb-6">
+                <div className={`w-8 h-8 sm:w-10 sm:h-10 ${colors.bg} rounded-lg flex items-center justify-center mr-2 sm:mr-3 flex-shrink-0`}>
+                  <svg className={`w-5 h-5 sm:w-6 sm:h-6 ${colors.text}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h10m-7 4h7" />
+                  </svg>
+                </div>
+                <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">{displayName}</h2>
+              </div>
+              
+              {isObject ? (
+                // Render array of objects (like pronouns, forms, etc.)
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                  {fieldValue.map((item: any, index: number) => {
+                    // Find key names (not values) for common properties
+                    const allKeys = Object.keys(item)
+                    const mainKey = allKeys.find(k => ['pronoun', 'form', 'word', 'name', 'title', 'subject', 'rule'].includes(k)) || allKeys[0]
+                    const meaningKey = allKeys.find(k => ['meaning', 'description', 'definition', 'use'].includes(k))
+                    const exampleKey = allKeys.find(k => ['example', 'sentence'].includes(k))
+                    
+                    return (
+                      <div
+                        key={index}
+                        className="bg-white rounded-lg sm:rounded-xl shadow-md p-4 sm:p-6 hover:shadow-lg transition-shadow border border-gray-100"
+                      >
+                        {mainKey && item[mainKey] && (
+                          <div className="flex items-start justify-between mb-3">
+                            <h3 className="text-xl sm:text-2xl font-bold text-primary-600">{item[mainKey]}</h3>
+                          </div>
+                        )}
+                        {meaningKey && item[meaningKey] && (
+                          <p className="text-sm sm:text-base text-gray-600 mb-3">
+                            <span className="font-semibold text-gray-800 capitalize">{meaningKey}: </span>
+                            {item[meaningKey]}
+                          </p>
+                        )}
+                        {exampleKey && item[exampleKey] && (
+                          <div className={`bg-primary-50 rounded-lg p-2 sm:p-3 border-l-4 ${colors.border}`}>
+                            <p className="text-sm sm:text-base text-gray-800 font-medium italic">
+                              "<ClickableText text={item[exampleKey]} />"
+                            </p>
+                          </div>
+                        )}
+                        {/* Render any remaining properties that weren't shown above */}
+                        {(() => {
+                          const shownKeys = [mainKey, meaningKey, exampleKey].filter(Boolean)
+                          const remainingKeys = allKeys.filter(k => !shownKeys.includes(k))
+                          if (remainingKeys.length === 0) return null
+                          return (
+                            <div className="space-y-2 mt-3">
+                              {remainingKeys.map((key) => (
+                                <div key={key}>
+                                  <span className="font-semibold text-gray-800 capitalize">{key}: </span>
+                                  <span className="text-gray-600">
+                                    {typeof item[key] === 'string' ? (
+                                      key.toLowerCase().includes('example') || key.toLowerCase().includes('sentence') ? (
+                                        <ClickableText text={item[key]} />
+                                      ) : (
+                                        item[key]
+                                      )
+                                    ) : (
+                                      JSON.stringify(item[key])
+                                    )}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )
+                        })()}
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                // Render array of strings
+                <div className="space-y-2 sm:space-y-3">
+                  {fieldValue.map((item: string, index: number) => (
+                    <div
+                      key={index}
+                      className="bg-white rounded-lg sm:rounded-xl shadow-md p-4 sm:p-6 border border-gray-100"
+                    >
+                      <p className="text-sm sm:text-base text-gray-800">
+                        <ClickableText text={item} />
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )
+        })
+      })()}
 
       {/* Tips Section */}
       {Array.isArray(lesson.tips) && lesson.tips.length > 0 && (

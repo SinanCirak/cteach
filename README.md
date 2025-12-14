@@ -1,17 +1,17 @@
-# Tilgo - English Learning Platform
+# cteach - SaaS Learning Platform
 
 <div align="center">
 
-![Tilgo Logo](public/logo.svg)
+![cteach Logo](public/logo.svg)
 
-**A modern, interactive web application for mastering English grammar and vocabulary**
+**A modern, flexible SaaS platform for teaching any subject - English, Math, Physics, Languages and more**
 
 [![React](https://img.shields.io/badge/React-18.3.1-61DAFB?logo=react)](https://reactjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.6.2-3178C6?logo=typescript)](https://www.typescriptlang.org/)
 [![AWS](https://img.shields.io/badge/AWS-Deployed-FF9900?logo=amazon-aws)](https://aws.amazon.com/)
 [![License](https://img.shields.io/badge/License-ISC-blue.svg)](LICENSE)
 
-[Live Demo](https://tilgo.cirak.ca) • [Documentation](#documentation) • [Features](#features) • [Tech Stack](#tech-stack)
+[Live Demo](https://cteach.cirak.ca) • [Documentation](#documentation) • [Features](#features) • [Tech Stack](#tech-stack)
 
 </div>
 
@@ -19,7 +19,7 @@
 
 ## 📖 Overview
 
-Tilgo is a comprehensive English learning platform designed to help learners master fundamental grammar rules and the 3,000-5,000 most common English words. Built with modern web technologies and deployed on AWS, Tilgo provides an interactive, student-friendly learning experience with real-time translation support for multiple languages.
+cteach is a flexible SaaS learning platform that can be used to teach any subject - English, Mathematics, Physics, Languages, or any other topic. Built with modern web technologies and deployed on AWS, cteach provides an interactive, student-friendly learning experience with real-time translation support for multiple languages, customizable categories, levels, and image support.
 
 ### Key Highlights
 
@@ -121,7 +121,7 @@ Tilgo is a comprehensive English learning platform designed to help learners mas
 1. **Clone the repository**:
    ```bash
    git clone https://github.com/SinanCirak/tilgo.git
-   cd tilgo
+   cd tilgo  # Note: Repository name may still be 'tilgo', but the application is now 'cteach'
    ```
 
 2. **Install dependencies**:
@@ -211,7 +211,7 @@ tilgo/
 
 ## 🌐 Deployment
 
-Tilgo is deployed on AWS using a serverless architecture. See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed deployment instructions.
+cteach is deployed on AWS using a serverless architecture. See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed deployment instructions.
 
 ### Quick Deployment Steps
 
@@ -232,7 +232,7 @@ Tilgo is deployed on AWS using a serverless architecture. See [DEPLOYMENT.md](DE
 3. **Build and deploy frontend**:
    ```bash
    npm run build
-   aws s3 sync dist/ s3://tilgo-website-prod/ --delete --region ca-central-1
+   aws s3 sync dist/ s3://cteach-website-prod/ --delete --region ca-central-1
    ```
 
 4. **Invalidate CloudFront cache**:

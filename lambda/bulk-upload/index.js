@@ -43,6 +43,8 @@ exports.handler = async (event) => {
       for (const item of items) {
         try {
           const lessonId = item.lessonId || uuidv4();
+          
+          // Base lesson object with required fields
           const lesson = {
             lessonId,
             title: item.title,
@@ -57,6 +59,14 @@ exports.handler = async (event) => {
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
           };
+          
+          // Add all other dynamic fields (pronouns, forms, rules, prepositions, etc.)
+          const knownFields = ['lessonId', 'title', 'subtitle', 'content', 'formula', 'uses', 'examples', 'tips', 'level', 'order', 'createdAt', 'updatedAt'];
+          Object.keys(item).forEach(key => {
+            if (!knownFields.includes(key)) {
+              lesson[key] = item[key];
+            }
+          });
 
           await dynamodb.put({
             TableName: GRAMMAR_LESSONS_TABLE,
